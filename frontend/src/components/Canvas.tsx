@@ -87,33 +87,32 @@ function getHandlePos(bbox: BBox, h: Handle): { x: number; y: number } {
   }
 }
 
-function applyResize(shape: Shape, handle: Handle, wx: number, wy: number, start: BBox): Partial<Shape> {
-  const { x: sx, y: sy, w: sw, h: sh } = start
-  let nx = sx, ny = sy, nw = sw, nh = sh
+function applyResize(shape: Shape, handle: Handle, dx: number, dy: number, start: BBox): Partial<Shape> {
+  let { x, y, w, h } = start
 
   switch (handle) {
-    case 'nw': nx = wx; ny = wy; nw = (sx + sw) - wx; nh = (sy + sh) - wy; break
-    case 'n':  ny = wy; nh = (sy + sh) - wy; break
-    case 'ne': ny = wy; nw = wx - sx;        nh = (sy + sh) - wy; break
-    case 'e':  nw = wx - sx; break
-    case 'se': nw = wx - sx; nh = wy - sy; break
-    case 's':  nh = wy - sy; break
-    case 'sw': nx = wx; nw = (sx + sw) - wx; nh = wy - sy; break
-    case 'w':  nx = wx; nw = (sx + sw) - wx; break
+    case 'nw': x += dx; y += dy; w -= dx; h -= dy; break
+    case 'n':             y += dy;          h -= dy; break
+    case 'ne':       y += dy; w += dx; h -= dy; break
+    case 'e':              w += dx;               break
+    case 'se':             w += dx; h += dy; break
+    case 's':                        h += dy; break
+    case 'sw': x += dx;    w -= dx; h += dy; break
+    case 'w':  x += dx;    w -= dx;          break
   }
 
-  nw = Math.max(8, nw); nh = Math.max(8, nh)
+  w = Math.max(16, w); h = Math.max(16, h)
 
-  if (shape.kind === 'rect' || shape.kind === 'note') return { x: nx, y: ny, width: nw, height: nh } as Partial<Shape>
-  if (shape.kind === 'ellipse') return { x: nx + nw / 2, y: ny + nh / 2, radiusX: nw / 2, radiusY: nh / 2 } as Partial<Shape>
+  if (shape.kind === 'rect' || shape.kind === 'note') return { x, y, width: w, height: h } as Partial<Shape>
+  if (shape.kind === 'ellipse') return { x: x + w / 2, y: y + h / 2, radiusX: w / 2, radiusY: h / 2 } as Partial<Shape>
   if (shape.kind === 'text') {
-    const scale = nh / sh
-    return { x: nx, y: ny + nh, fontSize: Math.max(8, Math.round((shape as TextShape).fontSize * scale)) } as Partial<Shape>
+    const scale = h / Math.max(1, start.h)
+    return { x, y: y + h, fontSize: Math.max(8, Math.round((shape as TextShape).fontSize * scale)) } as Partial<Shape>
   }
   if (shape.kind === 'arrow' || shape.kind === 'pen') {
     const pts = [...(shape as ArrowShape | PenShape).points]
-    const scaleX = nw / Math.max(1, sw), scaleY = nh / Math.max(1, sh)
-    return { points: pts.map((v, i) => i % 2 === 0 ? nx + (v - sx) * scaleX : ny + (v - sy) * scaleY) } as Partial<Shape>
+    const sx = w / Math.max(1, start.w), sy = h / Math.max(1, start.h)
+    return { points: pts.map((v, i) => i % 2 === 0 ? x + (v - start.x) * sx : y + (v - start.y) * sy) } as Partial<Shape>
   }
   return {}
 }
@@ -354,7 +353,7 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
   const dragOffset = useRef({ x: 0, y: 0 })
   const dragOffsets = useRef<Map<string, { x: number; y: number }>>(new Map())
   const dragging = useRef(false)
-  const resizingHandle = useRef<{ handle: Handle; shapeId: string; startBBox: BBox } | null>(null)
+  const resizingHandle = useRef<{ handle: Handle; shapeId: string; startBBox: BBox; startMouse: { x: number; y: number } } | null>(null)
   const [hoveredHandle, setHoveredHandle] = useState<Handle | null>(null)
 
   const toWorld = useCallback((sx: number, sy: number, cam: Camera) => ({
@@ -482,7 +481,7 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
             return Math.abs(world.x - pos.x) <= tolerance && Math.abs(world.y - pos.y) <= tolerance
           })
           if (hit) {
-            resizingHandle.current = { handle: hit, shapeId: selShape.id, startBBox: bbox }
+            resizingHandle.current = { handle: hit, shapeId: selShape.id, startBBox: bbox, startMouse: { x: world.x, y: world.y } }
             return
           }
         }
@@ -572,9 +571,11 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
 
     // Resize in progress
     if (resizingHandle.current) {
-      const { handle, shapeId, startBBox } = resizingHandle.current
+      const { handle, shapeId, startBBox, startMouse } = resizingHandle.current
       const shape = shapes.get(shapeId)
-      if (shape) onUpdate(shapeId, applyResize(shape, handle, world.x, world.y, startBBox))
+      const dx = world.x - startMouse.x
+      const dy = world.y - startMouse.y
+      if (shape) onUpdate(shapeId, applyResize(shape, handle, dx, dy, startBBox))
       return
     }
 
