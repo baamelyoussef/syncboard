@@ -317,34 +317,34 @@ export default function App() {
 }
 
 const s: Record<string, React.CSSProperties> = {
-  join: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#13131a' },
+  join: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f8f8f5' },
   joinCard: {
     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
-    background: 'rgba(22,22,30,0.98)',
-    border: '1px solid rgba(255,255,255,0.07)',
+    background: '#fff',
+    border: '1px solid rgba(0,0,0,0.08)',
     borderRadius: 18, padding: '40px 48px',
-    boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+    boxShadow: '0 8px 40px rgba(0,0,0,0.08)',
     minWidth: 340,
   },
   joinLogo: { display: 'flex', alignItems: 'center', gap: 10 },
-  joinBrandName: { fontSize: 26, fontWeight: 800, letterSpacing: '-0.04em', color: '#fff' },
-  joinSub: { fontSize: 13, color: 'rgba(255,255,255,0.3)', margin: 0, textAlign: 'center' },
+  joinBrandName: { fontSize: 26, fontWeight: 800, letterSpacing: '-0.04em', color: '#111' },
+  joinSub: { fontSize: 13, color: 'rgba(0,0,0,0.4)', margin: 0, textAlign: 'center' },
   createBtn: {
     background: '#6c8ebf', border: 'none', color: '#fff',
     borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 14,
     cursor: 'pointer', width: '100%', letterSpacing: '-0.01em',
   },
   orRow: { display: 'flex', alignItems: 'center', gap: 10, width: '100%' },
-  orLine: { flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' },
-  orText: { fontSize: 11, color: 'rgba(255,255,255,0.2)', whiteSpace: 'nowrap' },
+  orLine: { flex: 1, height: 1, background: 'rgba(0,0,0,0.07)' },
+  orText: { fontSize: 11, color: 'rgba(0,0,0,0.3)', whiteSpace: 'nowrap' },
   joinRow: { display: 'flex', gap: 8, width: '100%' },
   input: {
-    flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 8, color: '#fff', padding: '9px 14px', fontSize: 13, outline: 'none',
+    flex: 1, background: '#f5f5f3', border: '1px solid rgba(0,0,0,0.1)',
+    borderRadius: 8, color: '#111', padding: '9px 14px', fontSize: 13, outline: 'none',
     fontFamily: 'monospace',
   },
   joinBtn: {
-    background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)',
-    color: '#fff', borderRadius: 8, padding: '9px 18px', cursor: 'pointer', fontSize: 13,
+    background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.1)',
+    color: '#111', borderRadius: 8, padding: '9px 18px', cursor: 'pointer', fontSize: 13,
   },
 }
