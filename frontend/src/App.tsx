@@ -256,9 +256,49 @@ function Join() {
   )
 }
 
+function Viewer({ viewToken }: { viewToken: string }) {
+  const { shapes, cursors, connected } = useSync(`view/${viewToken}` as never)
+  const [theme] = useState<'dark' | 'light'>('dark')
+  const canvasRef = useRef<CanvasHandle>(null)
+
+  return (
+    <>
+      <Canvas
+        ref={canvasRef}
+        theme={theme}
+        shapes={shapes}
+        cursors={cursors}
+        tool="select"
+        color="#fff"
+        strokeWidth={2}
+        fillStyle="hachure"
+        roughness={1}
+        clientId="viewer"
+        selected={null}
+        onAdd={() => {}}
+        onUpdate={() => {}}
+        onDelete={() => {}}
+        onCursorMove={() => {}}
+        onSelectChange={() => {}}
+        onTextClick={() => {}}
+      />
+      <div style={{
+        position: 'fixed', top: 12, left: '50%', transform: 'translateX(-50%)',
+        background: 'rgba(18,18,26,0.95)', border: '1px solid rgba(255,255,255,0.07)',
+        borderRadius: 8, padding: '6px 14px', color: 'rgba(255,255,255,0.5)',
+        fontSize: 12, display: 'flex', alignItems: 'center', gap: 8, zIndex: 100,
+      }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: connected ? '#40c057' : '#fa5252', display: 'inline-block' }} />
+        View only
+      </div>
+    </>
+  )
+}
+
 export default function App() {
-  const roomId = window.location.hash.slice(1)
-  return roomId ? <Board roomId={roomId} /> : <Join />
+  const hash = window.location.hash.slice(1)
+  if (hash.startsWith('view:')) return <Viewer viewToken={hash.slice(5)} />
+  return hash ? <Board roomId={hash} /> : <Join />
 }
 
 const s: Record<string, React.CSSProperties> = {

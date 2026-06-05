@@ -20,10 +20,16 @@ export default function ShareMenu({ roomId, isDark }: Props) {
   }, [])
 
   const collabLink = window.location.href
-  const viewLink = `${window.location.origin}${window.location.pathname}#view:${roomId}`
 
-  const copy = (type: 'view' | 'collab') => {
-    navigator.clipboard.writeText(type === 'collab' ? collabLink : viewLink)
+  const copy = async (type: 'view' | 'collab') => {
+    if (type === 'collab') {
+      navigator.clipboard.writeText(collabLink)
+    } else {
+      const res = await fetch(`/room/view-token/${roomId}`)
+      const { viewToken } = await res.json()
+      const viewLink = `${window.location.origin}${window.location.pathname}#view:${viewToken}`
+      navigator.clipboard.writeText(viewLink)
+    }
     setCopied(type)
     setTimeout(() => setCopied(null), 2000)
   }

@@ -135,38 +135,26 @@ export default function Toolbar(p: Props) {
         </div>
       </div>
 
-      {/* Top bar */}
-      <div style={{ ...s.topBar, ...panel }}>
-        <div style={s.brand}>
-          <svg width="16" height="16" viewBox="0 0 22 22" fill="none">
-            <rect x="1" y="1" width="9" height="9" rx="2" stroke="#6c8ebf" strokeWidth="1.8" fill="none" />
-            <rect x="12" y="1" width="9" height="9" rx="2" stroke="#c084fc" strokeWidth="1.8" fill="none" />
-            <rect x="1" y="12" width="9" height="9" rx="2" stroke="#f9a8d4" strokeWidth="1.8" fill="none" />
-            <rect x="12" y="12" width="9" height="9" rx="2" stroke="#6ee7b7" strokeWidth="1.8" fill="none" />
-          </svg>
-          <span style={{ ...s.brandName, color: text }}>syncboard</span>
+      {/* Top-right actions */}
+      <div style={{ ...s.topRight, ...panel }}>
+        <div style={{ ...s.statusPill }}>
+          <span style={{ ...s.statusDot, background: p.connected ? '#40c057' : '#fa5252' }} />
+          <span style={{ color: textMuted, fontSize: 11 }}>{p.peerCount + 1} online</span>
         </div>
 
-        <div style={s.topActions}>
-          {/* Theme */}
-          <button
-            onClick={p.onThemeToggle}
-            title={isDark ? 'Light mode' : 'Dark mode'}
-            style={{ ...s.iconBtn, color: text }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = hoverBg }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
-          >
-            {isDark ? <Sun size={15} strokeWidth={1.75} /> : <Moon size={15} strokeWidth={1.75} />}
-          </button>
+        <div style={{ width: 1, height: 16, background: dividerColor }} />
 
-          <ShareMenu roomId={p.roomId} isDark={isDark} />
+        <button
+          onClick={p.onThemeToggle}
+          title={isDark ? 'Light mode' : 'Dark mode'}
+          style={{ ...s.iconBtn, color: text }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = hoverBg }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+        >
+          {isDark ? <Sun size={15} strokeWidth={1.75} /> : <Moon size={15} strokeWidth={1.75} />}
+        </button>
 
-          {/* Online status */}
-          <div style={{ ...s.statusPill, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', border: `1px solid ${dividerColor}` }}>
-            <span style={{ ...s.statusDot, background: p.connected ? '#40c057' : '#fa5252' }} />
-            <span style={{ color: textMuted, fontSize: 11 }}>{p.peerCount + 1} online</span>
-          </div>
-        </div>
+        <ShareMenu roomId={p.roomId} isDark={isDark} />
       </div>
 
       {/* Bottom properties panel */}
@@ -357,34 +345,16 @@ const s: Record<string, React.CSSProperties> = {
     transition: 'background 0.1s, color 0.1s',
     padding: 0,
   },
-  topBar: {
+  topRight: {
     position: 'fixed',
     top: 12,
-    left: '50%',
-    transform: 'translateX(-50%)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 16,
-    borderRadius: 12,
-    padding: '7px 14px',
-    zIndex: 100,
-    minWidth: 320,
-  },
-  brand: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-  },
-  brandName: {
-    fontSize: 13,
-    fontWeight: 700,
-    letterSpacing: '-0.03em',
-  },
-  topActions: {
+    right: 12,
     display: 'flex',
     alignItems: 'center',
     gap: 6,
+    borderRadius: 10,
+    padding: '6px 10px',
+    zIndex: 100,
   },
   iconBtn: {
     width: 30,
