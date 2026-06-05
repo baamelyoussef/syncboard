@@ -336,7 +336,9 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
   // Keyboard
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space') { spaceHeld.current = true; e.preventDefault() }
+      if (e.code === 'Space' && !(e.target instanceof HTMLTextAreaElement) && !(e.target instanceof HTMLInputElement)) {
+        spaceHeld.current = true; e.preventDefault()
+      }
       if ((e.key === 'Delete' || e.key === 'Backspace') && selected.size > 0 && !(e.target instanceof HTMLInputElement)) {
         selected.forEach(id => onDelete(id))
         onSelectChange(new Set())
