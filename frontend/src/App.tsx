@@ -22,7 +22,7 @@ function Board({ roomId }: BoardProps) {
   const [fillStyle, setFillStyle] = useState<FillStyle>('hachure')
   const [roughness, setRoughness] = useState(1)
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const [theme, setTheme] = useState<'dark' | 'light'>('light')
   const [noteColor, setNoteColor] = useState(NOTE_COLORS[0])
 
   const [textInput, setTextInput] = useState<{ x: number; y: number; wx: number; wy: number } | null>(null)
@@ -272,7 +272,7 @@ function Join() {
 
 function Viewer({ viewToken }: { viewToken: string }) {
   const { shapes, cursors, connected } = useSync(`view/${viewToken}` as never)
-  const [theme] = useState<'dark' | 'light'>('dark')
+  const [theme] = useState<'dark' | 'light'>('light')
   const canvasRef = useRef<CanvasHandle>(null)
 
   return (
