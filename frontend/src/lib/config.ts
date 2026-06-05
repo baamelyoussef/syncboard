@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 const raw = import.meta.env.VITE_BACKEND_URL as string | undefined
 
 export const API_BASE = raw ? raw.replace(/\/$/, '') : ''
