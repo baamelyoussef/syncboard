@@ -21,7 +21,7 @@ function Board({ roomId }: BoardProps) {
   const [strokeWidth, setStrokeWidth] = useState(2)
   const [fillStyle, setFillStyle] = useState<FillStyle>('hachure')
   const [roughness, setRoughness] = useState(1)
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [noteColor, setNoteColor] = useState(NOTE_COLORS[0])
 
@@ -195,13 +195,13 @@ function Board({ roomId }: BoardProps) {
         roughness={roughness}
         noteColor={noteColor}
         noteColors={NOTE_COLORS}
-        onTool={t => { setTool(t); setSelected(null) }}
+        onTool={t => { setTool(t); setSelected(new Set()) }}
         onColor={setColor}
         onStrokeWidth={setStrokeWidth}
         onFillStyle={setFillStyle}
         onRoughness={setRoughness}
         onNoteColor={setNoteColor}
-        onClear={() => { shapes.forEach((_, id) => histDelete(id)); setSelected(null) }}
+        onClear={() => { shapes.forEach((_, id) => histDelete(id)); setSelected(new Set()) }}
         connected={connected}
         peerCount={peers.size}
         theme={theme}
@@ -288,7 +288,7 @@ function Viewer({ viewToken }: { viewToken: string }) {
         fillStyle="hachure"
         roughness={1}
         clientId="viewer"
-        selected={null}
+        selected={new Set()}
         onAdd={() => {}}
         onUpdate={() => {}}
         onDelete={() => {}}

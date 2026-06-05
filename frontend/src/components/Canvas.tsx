@@ -20,10 +20,10 @@ interface Props {
   onUpdate: (id: string, props: Partial<Shape>) => void
   onDelete: (id: string) => void
   onCursorMove: (x: number, y: number) => void
-  onSelectChange: (id: string | null) => void
+  onSelectChange: (ids: Set<string>) => void
   onTextClick: (screenX: number, screenY: number, worldX: number, worldY: number) => void
   onZoomChange?: (zoom: number) => void
-  selected: string | null
+  selected: Set<string>
 }
 
 export interface CanvasHandle {
@@ -271,6 +271,7 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
   const spaceHeld = useRef(false)
   const penPoints = useRef<number[]>([])
   const dragOffset = useRef({ x: 0, y: 0 })
+  const dragOffsets = useRef<Map<string, { x: number; y: number }>>(new Map())
   const dragging = useRef(false)
 
   const toWorld = useCallback((sx: number, sy: number, cam: Camera) => ({
@@ -299,7 +300,7 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
     ctx.scale(camera.zoom, camera.zoom)
 
     for (const shape of shapes.values()) {
-      drawShape(rc, ctx, shape, shape.id === selected)
+      drawShape(rc, ctx, shape, selected.has(shape.id))
     }
     if (draft) drawShape(rc, ctx, draft, false)
 
@@ -336,9 +337,9 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
       if (e.code === 'Space') { spaceHeld.current = true; e.preventDefault() }
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selected && !(e.target instanceof HTMLInputElement)) {
-        onDelete(selected)
-        onSelectChange(null)
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selected.size > 0 && !(e.target instanceof HTMLInputElement)) {
+        selected.forEach(id => onDelete(id))
+        onSelectChange(new Set())
       }
     }
     const onUp = (e: KeyboardEvent) => { if (e.code === 'Space') spaceHeld.current = false }
@@ -363,26 +364,46 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
     const world = toWorld(e.clientX, e.clientY, camera)
 
     if (tool === 'select') {
-      // Collect all shapes under cursor (bottom→top order)
       const arr = [...shapes.values()]
       const hits = arr.filter(s => hitTest(s, world.x, world.y))
+
       if (hits.length === 0) {
-        onSelectChange(null)
+        // Click empty space: clear unless shift (allow box-select later)
+        if (!e.shiftKey) onSelectChange(new Set())
         return
       }
-      // If clicking the same spot again with a shape already selected, cycle to next overlapping shape
+
+      // Pick which shape to act on
+      // Cycle through overlaps when clicking the same spot repeatedly (no shift)
       let hit: Shape
-      const currentIdx = hits.findIndex(s => s.id === selected)
-      if (currentIdx !== -1) {
-        // cycle backwards (topmost first)
-        hit = hits[(currentIdx - 1 + hits.length) % hits.length]
+      if (e.shiftKey) {
+        // Shift+click: toggle topmost hit in/out of selection
+        hit = hits[hits.length - 1]
+        const next = new Set(selected)
+        if (next.has(hit.id)) next.delete(hit.id)
+        else next.add(hit.id)
+        onSelectChange(next)
+        dragging.current = false
+        return
       } else {
-        hit = hits[hits.length - 1] // topmost
+        // Normal click: cycle through stacked shapes, or pick topmost if none selected here
+        const currentIdx = hits.findIndex(s => selected.has(s.id))
+        hit = currentIdx !== -1
+          ? hits[(currentIdx - 1 + hits.length) % hits.length]
+          : hits[hits.length - 1]
+
+        // If the clicked shape isn't already in selection, replace selection
+        if (!selected.has(hit.id)) onSelectChange(new Set([hit.id]))
       }
-      onSelectChange(hit.id)
+
+      // Start drag — record offsets for ALL currently selected shapes
       dragging.current = true
-      const s = hit as RectShape
-      dragOffset.current = { x: world.x - (s.x ?? 0), y: world.y - (s.y ?? 0) }
+      dragOffsets.current = new Map()
+      const finalSelected = selected.has(hit.id) ? selected : new Set([hit.id])
+      for (const id of finalSelected) {
+        const s = shapes.get(id) as RectShape | undefined
+        dragOffsets.current.set(id, { x: world.x - (s?.x ?? 0), y: world.y - (s?.y ?? 0) })
+      }
       return
     }
 
@@ -423,11 +444,12 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
       return
     }
 
-    if (dragging.current && selected) {
-      const shape = shapes.get(selected)
-      if (!shape) return
-      if ('x' in shape) {
-        onUpdate(selected, { x: world.x - dragOffset.current.x, y: world.y - dragOffset.current.y } as Partial<Shape>)
+    if (dragging.current && dragOffsets.current.size > 0) {
+      for (const [id, off] of dragOffsets.current) {
+        const shape = shapes.get(id)
+        if (shape && 'x' in shape) {
+          onUpdate(id, { x: world.x - off.x, y: world.y - off.y } as Partial<Shape>)
+        }
       }
       return
     }
