@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { API_BASE } from './lib/config'
 import Canvas from './components/Canvas'
 import type { CanvasHandle } from './components/Canvas'
 import Toolbar from './components/Toolbar'
@@ -229,7 +230,7 @@ function Join() {
   const [input, setInput] = useState('')
 
   const create = async () => {
-    const res = await fetch('/room/new')
+    const res = await fetch(`${API_BASE}/room/new`)
     const { roomId } = await res.json()
     window.location.hash = roomId
     window.location.reload()

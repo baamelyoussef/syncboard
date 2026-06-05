@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { API_BASE } from '../lib/config'
 import { Share2, Eye, Users, Check, Copy, X } from 'lucide-react'
 
 interface Props {
@@ -25,7 +26,7 @@ export default function ShareMenu({ roomId, isDark }: Props) {
     if (type === 'collab') {
       navigator.clipboard.writeText(collabLink)
     } else {
-      const res = await fetch(`/room/view-token/${roomId}`)
+      const res = await fetch(`${API_BASE}/room/view-token/${roomId}`)
       const { viewToken } = await res.json()
       const viewLink = `${window.location.origin}${window.location.pathname}#view:${viewToken}`
       navigator.clipboard.writeText(viewLink)

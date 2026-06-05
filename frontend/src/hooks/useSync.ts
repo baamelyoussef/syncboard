@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { WS_BASE } from '../lib/config'
 import { v4 as uuid } from 'uuid'
 import type { Op, Shape, Peer, CursorState } from '../types'
 
@@ -49,7 +50,7 @@ export function useSync(roomId: string) {
 
   useEffect(() => {
     const ws = new WebSocket(
-      `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/${roomId}?clientId=${CLIENT_ID}&name=${NAME}&color=${encodeURIComponent(MY_COLOR)}`
+      `${WS_BASE}/ws/${roomId}?clientId=${CLIENT_ID}&name=${NAME}&color=${encodeURIComponent(MY_COLOR)}`
     )
     wsRef.current = ws
 
