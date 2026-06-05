@@ -49,7 +49,7 @@ export function useSync(roomId: string) {
 
   useEffect(() => {
     const ws = new WebSocket(
-      `ws://${window.location.host}/ws/${roomId}?clientId=${CLIENT_ID}&name=${NAME}&color=${encodeURIComponent(MY_COLOR)}`
+      `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/${roomId}?clientId=${CLIENT_ID}&name=${NAME}&color=${encodeURIComponent(MY_COLOR)}`
     )
     wsRef.current = ws
 
