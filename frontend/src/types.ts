@@ -1,12 +1,16 @@
-export type Tool = 'select' | 'rect' | 'ellipse' | 'arrow' | 'pen' | 'text'
+export type Tool = 'select' | 'rect' | 'ellipse' | 'arrow' | 'pen' | 'text' | 'pan'
+
+export type FillStyle = 'hachure' | 'solid' | 'none'
 
 export interface BaseShape {
   id: string
   clientId: string
   clock: number
-  fill: string
   stroke: string
   strokeWidth: number
+  fill: string
+  fillStyle: FillStyle
+  roughness: number
   opacity: number
 }
 
@@ -63,4 +67,10 @@ export interface CursorState {
   y: number
   color: string
   name: string
+}
+
+export interface Camera {
+  x: number
+  y: number
+  zoom: number
 }

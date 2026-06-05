@@ -1,154 +1,291 @@
-import type { Tool } from '../types'
+import type { Tool, FillStyle } from '../types'
 
-const TOOLS: { id: Tool; label: string; icon: string }[] = [
-  { id: 'select', label: 'Select', icon: '↖' },
-  { id: 'rect', label: 'Rectangle', icon: '▭' },
-  { id: 'ellipse', label: 'Ellipse', icon: '○' },
-  { id: 'arrow', label: 'Arrow', icon: '→' },
-  { id: 'pen', label: 'Pen', icon: '✏' },
-  { id: 'text', label: 'Text', icon: 'T' },
+const TOOLS: { id: Tool; icon: string; label: string; key: string }[] = [
+  { id: 'select',  icon: '↖', label: 'Select',    key: 'V' },
+  { id: 'pan',     icon: '✋', label: 'Pan',       key: 'H' },
+  { id: 'rect',    icon: '▭', label: 'Rectangle', key: 'R' },
+  { id: 'ellipse', icon: '○', label: 'Ellipse',   key: 'E' },
+  { id: 'arrow',   icon: '↗', label: 'Arrow',     key: 'A' },
+  { id: 'pen',     icon: '✏', label: 'Pen',       key: 'P' },
+  { id: 'text',    icon: 'T', label: 'Text',      key: 'T' },
+]
+
+const COLORS = [
+  '#ffffff', '#f08c00', '#e03131', '#c2255c',
+  '#6741d9', '#1971c2', '#0c8599', '#2f9e44',
 ]
 
 interface Props {
   tool: Tool
   color: string
   strokeWidth: number
+  fillStyle: FillStyle
+  roughness: number
   onTool: (t: Tool) => void
   onColor: (c: string) => void
   onStrokeWidth: (w: number) => void
+  onFillStyle: (f: FillStyle) => void
+  onRoughness: (r: number) => void
   onClear: () => void
   connected: boolean
   peerCount: number
 }
 
-export default function Toolbar({ tool, color, strokeWidth, onTool, onColor, onStrokeWidth, onClear, connected, peerCount }: Props) {
+export default function Toolbar(p: Props) {
   return (
-    <div style={s.bar}>
-      <span style={s.logo}>Syncboard</span>
-
-      <div style={s.sep} />
-
-      <div style={s.group}>
-        {TOOLS.map((t) => (
+    <>
+      {/* Left tool panel */}
+      <div style={s.left}>
+        {TOOLS.map(t => (
           <button
             key={t.id}
-            title={t.label}
-            onClick={() => onTool(t.id)}
-            style={{ ...s.btn, ...(tool === t.id ? s.active : {}) }}
+            title={`${t.label} (${t.key})`}
+            onClick={() => p.onTool(t.id)}
+            style={{ ...s.btn, ...(p.tool === t.id ? s.active : {}) }}
           >
-            {t.icon}
+            <span style={s.icon}>{t.icon}</span>
           </button>
         ))}
       </div>
 
-      <div style={s.sep} />
-
-      <div style={s.group}>
-        <input type="color" value={color} onChange={(e) => onColor(e.target.value)} style={s.colorPicker} title="Color" />
-        <select value={strokeWidth} onChange={(e) => onStrokeWidth(Number(e.target.value))} style={s.select}>
-          {[1, 2, 4, 6, 10].map((w) => <option key={w} value={w}>{w}px</option>)}
-        </select>
+      {/* Top bar */}
+      <div style={s.top}>
+        <span style={s.brand}>syncboard</span>
+        <div style={s.topRight}>
+          <div style={{ ...s.dot, background: p.connected ? '#40c057' : '#fa5252' }} />
+          <span style={s.peers}>{p.peerCount + 1} online</span>
+        </div>
       </div>
 
-      <div style={s.sep} />
+      {/* Properties panel (bottom) */}
+      <div style={s.props}>
+        {/* Stroke color */}
+        <div style={s.propGroup}>
+          <span style={s.propLabel}>Stroke</span>
+          <div style={s.swatches}>
+            {COLORS.map(c => (
+              <button
+                key={c}
+                onClick={() => p.onColor(c)}
+                style={{
+                  ...s.swatch,
+                  background: c,
+                  boxShadow: p.color === c ? `0 0 0 2px #fff, 0 0 0 4px ${c}` : 'none',
+                }}
+              />
+            ))}
+            <input
+              type="color"
+              value={p.color}
+              onChange={e => p.onColor(e.target.value)}
+              style={s.colorInput}
+              title="Custom color"
+            />
+          </div>
+        </div>
 
-      <button onClick={onClear} style={s.clearBtn} title="Clear board">Clear</button>
+        <div style={s.divider} />
 
-      <div style={{ flex: 1 }} />
+        {/* Fill style */}
+        <div style={s.propGroup}>
+          <span style={s.propLabel}>Fill</span>
+          <div style={s.swatches}>
+            {(['none', 'hachure', 'solid'] as FillStyle[]).map(f => (
+              <button
+                key={f}
+                onClick={() => p.onFillStyle(f)}
+                style={{ ...s.fillBtn, ...(p.fillStyle === f ? s.fillActive : {}) }}
+              >
+                {f === 'none' ? '—' : f === 'hachure' ? '≡' : '■'}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      <div style={{ ...s.status, background: connected ? 'rgba(78,205,196,0.15)' : 'rgba(255,107,107,0.15)' }}>
-        <span style={{ ...s.dot, background: connected ? '#4ECDC4' : '#FF6B6B' }} />
-        {connected ? `${peerCount + 1} online` : 'disconnected'}
+        <div style={s.divider} />
+
+        {/* Stroke width */}
+        <div style={s.propGroup}>
+          <span style={s.propLabel}>Width</span>
+          <div style={s.swatches}>
+            {[1, 2, 4, 6].map(w => (
+              <button
+                key={w}
+                onClick={() => p.onStrokeWidth(w)}
+                style={{ ...s.widthBtn, ...(p.strokeWidth === w ? s.fillActive : {}) }}
+              >
+                <div style={{ width: 18, height: w + 1, background: '#fff', borderRadius: 2 }} />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={s.divider} />
+
+        {/* Roughness */}
+        <div style={s.propGroup}>
+          <span style={s.propLabel}>Rough</span>
+          <div style={s.swatches}>
+            {([0, 1, 2.5] as number[]).map((r, i) => (
+              <button
+                key={r}
+                onClick={() => p.onRoughness(r)}
+                style={{ ...s.fillBtn, ...(p.roughness === r ? s.fillActive : {}) }}
+              >
+                {['─', '~', '≈'][i]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={s.divider} />
+
+        <button onClick={p.onClear} style={s.clearBtn}>Clear</button>
       </div>
-    </div>
+    </>
   )
 }
 
 const s: Record<string, React.CSSProperties> = {
-  bar: {
+  left: {
     position: 'fixed',
-    top: 16,
+    left: 12,
+    top: '50%',
+    transform: 'translateY(-50%)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 2,
+    background: 'rgba(22,22,30,0.96)',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: 12,
+    padding: 6,
+    backdropFilter: 'blur(20px)',
+    zIndex: 100,
+    boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+  },
+  btn: {
+    width: 36,
+    height: 36,
+    border: 'none',
+    background: 'transparent',
+    borderRadius: 8,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'background 0.1s',
+  },
+  active: {
+    background: 'rgba(108,142,191,0.3)',
+    outline: '1.5px solid rgba(108,142,191,0.6)',
+  },
+  icon: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.75)',
+    lineHeight: 1,
+  },
+  top: {
+    position: 'fixed',
+    top: 12,
     left: '50%',
     transform: 'translateX(-50%)',
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
-    background: 'rgba(20,20,20,0.95)',
-    border: '1px solid rgba(255,255,255,0.08)',
+    gap: 16,
+    background: 'rgba(22,22,30,0.96)',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: 10,
+    padding: '6px 16px',
+    backdropFilter: 'blur(20px)',
+    zIndex: 100,
+    boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
+  },
+  brand: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: 'rgba(255,255,255,0.85)',
+    letterSpacing: '-0.03em',
+  },
+  topRight: { display: 'flex', alignItems: 'center', gap: 6 },
+  dot: { width: 6, height: 6, borderRadius: '50%' },
+  peers: { fontSize: 11, color: 'rgba(255,255,255,0.35)' },
+  props: {
+    position: 'fixed',
+    bottom: 16,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    background: 'rgba(22,22,30,0.96)',
+    border: '1px solid rgba(255,255,255,0.07)',
     borderRadius: 12,
     padding: '8px 14px',
     backdropFilter: 'blur(20px)',
     zIndex: 100,
-    boxShadow: '0 4px 32px rgba(0,0,0,0.4)',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
     userSelect: 'none',
   },
-  logo: {
-    fontSize: 13,
-    fontWeight: 700,
-    color: '#fff',
-    letterSpacing: '-0.02em',
-    whiteSpace: 'nowrap',
-  },
-  sep: { width: 1, height: 20, background: 'rgba(255,255,255,0.1)', margin: '0 4px' },
-  group: { display: 'flex', gap: 2 },
-  btn: {
-    width: 32,
-    height: 32,
-    border: 'none',
-    background: 'transparent',
-    color: 'rgba(255,255,255,0.5)',
-    borderRadius: 7,
+  propGroup: { display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'flex-start' },
+  propLabel: { fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.1em' },
+  swatches: { display: 'flex', gap: 4, alignItems: 'center' },
+  swatch: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    border: '1.5px solid rgba(255,255,255,0.15)',
     cursor: 'pointer',
-    fontSize: 14,
+    padding: 0,
+    transition: 'box-shadow 0.1s',
+  },
+  colorInput: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    border: '1.5px solid rgba(255,255,255,0.15)',
+    cursor: 'pointer',
+    padding: 1,
+    background: 'transparent',
+  },
+  fillBtn: {
+    width: 28,
+    height: 22,
+    border: '1px solid rgba(255,255,255,0.1)',
+    background: 'transparent',
+    color: 'rgba(255,255,255,0.6)',
+    borderRadius: 5,
+    cursor: 'pointer',
+    fontSize: 11,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    transition: 'all 0.1s',
   },
-  active: {
-    background: 'rgba(255,255,255,0.12)',
+  fillActive: {
+    background: 'rgba(108,142,191,0.25)',
+    borderColor: 'rgba(108,142,191,0.5)',
     color: '#fff',
   },
-  colorPicker: {
-    width: 32,
-    height: 32,
-    border: 'none',
-    borderRadius: 7,
-    padding: 2,
-    cursor: 'pointer',
-    background: 'transparent',
-  },
-  select: {
-    background: 'rgba(255,255,255,0.07)',
+  widthBtn: {
+    width: 28,
+    height: 22,
     border: '1px solid rgba(255,255,255,0.1)',
-    color: '#fff',
-    borderRadius: 7,
-    padding: '4px 6px',
-    fontSize: 12,
+    background: 'transparent',
+    borderRadius: 5,
     cursor: 'pointer',
-  },
-  clearBtn: {
-    background: 'rgba(255,107,107,0.15)',
-    border: '1px solid rgba(255,107,107,0.3)',
-    color: '#FF6B6B',
-    borderRadius: 7,
-    padding: '4px 10px',
-    fontSize: 12,
-    cursor: 'pointer',
-  },
-  status: {
     display: 'flex',
     alignItems: 'center',
-    gap: 6,
-    padding: '4px 10px',
-    borderRadius: 7,
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.7)',
-    whiteSpace: 'nowrap',
+    justifyContent: 'center',
   },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: '50%',
+  divider: { width: 1, height: 40, background: 'rgba(255,255,255,0.07)' },
+  clearBtn: {
+    background: 'rgba(250,82,82,0.12)',
+    border: '1px solid rgba(250,82,82,0.25)',
+    color: '#fa5252',
+    borderRadius: 7,
+    padding: '5px 12px',
+    fontSize: 11,
+    cursor: 'pointer',
+    fontWeight: 600,
+    letterSpacing: '0.03em',
   },
 }
