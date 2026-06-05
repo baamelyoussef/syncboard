@@ -22,11 +22,15 @@ interface Props {
   onCursorMove: (x: number, y: number) => void
   onSelectChange: (id: string | null) => void
   onTextClick: (screenX: number, screenY: number, worldX: number, worldY: number) => void
+  onZoomChange?: (zoom: number) => void
   selected: string | null
 }
 
 export interface CanvasHandle {
   getCanvas: () => HTMLCanvasElement | null
+  zoomIn: () => void
+  zoomOut: () => void
+  resetZoom: () => void
 }
 
 function idToSeed(id: string): number {
@@ -237,12 +241,26 @@ function hitTest(shape: Shape, wx: number, wy: number): boolean {
 
 const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
   shapes, cursors, tool, theme, color, strokeWidth, fillStyle, roughness,
-  clientId, onAdd, onUpdate, onDelete, onCursorMove, onSelectChange, onTextClick, selected
+  clientId, onAdd, onUpdate, onDelete, onCursorMove, onSelectChange, onTextClick, onZoomChange, selected
 }, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
+  const applyZoom = useCallback((factor: number, cx?: number, cy?: number) => {
+    setCamera(cam => {
+      const newZoom = Math.max(0.1, Math.min(20, cam.zoom * factor))
+      const pivotX = cx ?? window.innerWidth / 2
+      const pivotY = cy ?? window.innerHeight / 2
+      const wx = (pivotX - cam.x) / cam.zoom
+      const wy = (pivotY - cam.y) / cam.zoom
+      return { x: pivotX - wx * newZoom, y: pivotY - wy * newZoom, zoom: newZoom }
+    })
+  }, [])
+
   useImperativeHandle(ref, () => ({
     getCanvas: () => canvasRef.current,
+    zoomIn: () => applyZoom(1.25),
+    zoomOut: () => applyZoom(0.8),
+    resetZoom: () => setCamera({ x: 0, y: 0, zoom: 1 }),
   }))
   const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, zoom: 1 })
   const [draft, setDraft] = useState<Shape | null>(null)
@@ -302,6 +320,8 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
     ctx.restore()
   }, [shapes, draft, cursors, camera, selected, theme])
 
+  useEffect(() => { onZoomChange?.(camera.zoom) }, [camera.zoom, onZoomChange])
+
   // Resize
   useEffect(() => {
     const handler = () => {
@@ -329,14 +349,8 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault()
-    setCamera(cam => {
-      const factor = e.deltaY < 0 ? 1.1 : 0.9
-      const newZoom = Math.max(0.1, Math.min(20, cam.zoom * factor))
-      const wx = (e.clientX - cam.x) / cam.zoom
-      const wy = (e.clientY - cam.y) / cam.zoom
-      return { x: e.clientX - wx * newZoom, y: e.clientY - wy * newZoom, zoom: newZoom }
-    })
-  }, [])
+    applyZoom(e.deltaY < 0 ? 1.1 : 0.9, e.clientX, e.clientY)
+  }, [applyZoom])
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     const isPan = tool === 'pan' || spaceHeld.current || e.button === 1
@@ -349,20 +363,26 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
     const world = toWorld(e.clientX, e.clientY, camera)
 
     if (tool === 'select') {
-      // Find topmost hit shape (reverse order)
+      // Collect all shapes under cursor (bottom→top order)
       const arr = [...shapes.values()]
-      let hit: Shape | null = null
-      for (let i = arr.length - 1; i >= 0; i--) {
-        if (hitTest(arr[i], world.x, world.y)) { hit = arr[i]; break }
-      }
-      if (hit) {
-        onSelectChange(hit.id)
-        dragging.current = true
-        const s = hit as RectShape
-        dragOffset.current = { x: world.x - (s.x ?? 0), y: world.y - (s.y ?? 0) }
-      } else {
+      const hits = arr.filter(s => hitTest(s, world.x, world.y))
+      if (hits.length === 0) {
         onSelectChange(null)
+        return
       }
+      // If clicking the same spot again with a shape already selected, cycle to next overlapping shape
+      let hit: Shape
+      const currentIdx = hits.findIndex(s => s.id === selected)
+      if (currentIdx !== -1) {
+        // cycle backwards (topmost first)
+        hit = hits[(currentIdx - 1 + hits.length) % hits.length]
+      } else {
+        hit = hits[hits.length - 1] // topmost
+      }
+      onSelectChange(hit.id)
+      dragging.current = true
+      const s = hit as RectShape
+      dragOffset.current = { x: world.x - (s.x ?? 0), y: world.y - (s.y ?? 0) }
       return
     }
 

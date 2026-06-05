@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
+import { Undo2, Redo2, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
 import Canvas from './components/Canvas'
 import type { CanvasHandle } from './components/Canvas'
 import Toolbar from './components/Toolbar'
 import { useSync } from './hooks/useSync'
-import type { Tool, FillStyle, TextShape, NoteShape } from './types'
+import { useHistory } from './hooks/useHistory'
+import type { Tool, FillStyle, TextShape, NoteShape, Shape } from './types'
 import { v4 as uuid } from 'uuid'
 
 const KEY_TOOL: Record<string, Tool> = {
@@ -26,20 +28,39 @@ function Board({ roomId }: BoardProps) {
 
   const [textInput, setTextInput] = useState<{ x: number; y: number; wx: number; wy: number } | null>(null)
   const [textValue, setTextValue] = useState('')
+  const [zoom, setZoom] = useState(1)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const canvasRef = useRef<CanvasHandle>(null)
 
   const { shapes, cursors, peers, connected, clientId, addShape, updateShape, deleteShape, moveCursor } = useSync(roomId)
+  const history = useHistory()
+
+  const histAdd = (shape: Shape) => {
+    addShape(shape)
+    history.push({ undo: () => deleteShape(shape.id), redo: () => addShape(shape) })
+  }
+  const histUpdate = (id: string, props: Partial<Shape>) => {
+    const prev = shapes.get(id)
+    updateShape(id, props)
+    if (prev) history.push({ undo: () => updateShape(id, prev), redo: () => updateShape(id, props) })
+  }
+  const histDelete = (id: string) => {
+    const shape = shapes.get(id)
+    deleteShape(id)
+    if (shape) history.push({ undo: () => addShape(shape), redo: () => deleteShape(id) })
+  }
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); history.undo(); return }
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); history.redo(); return }
       const t = KEY_TOOL[e.key.toLowerCase()]
       if (t) setTool(t)
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [history])
 
   const handleTextClick = (screenX: number, screenY: number, worldX: number, worldY: number) => {
     setTextInput({ x: screenX, y: screenY, wx: worldX, wy: worldY })
@@ -50,7 +71,7 @@ function Board({ roomId }: BoardProps) {
   const commitText = () => {
     if (textInput) {
       if (tool === 'note') {
-        addShape({
+        histAdd({
           id: uuid(), clientId, clock: 0,
           kind: 'note',
           x: textInput.wx - 10,
@@ -67,7 +88,7 @@ function Board({ roomId }: BoardProps) {
           opacity: 1,
         } as NoteShape)
       } else if (textValue.trim()) {
-        addShape({
+        histAdd({
           id: uuid(), clientId, clock: 0,
           kind: 'text',
           x: textInput.wx,
@@ -107,9 +128,10 @@ function Board({ roomId }: BoardProps) {
         roughness={roughness}
         clientId={clientId}
         selected={selected}
-        onAdd={addShape}
-        onUpdate={updateShape}
-        onDelete={deleteShape}
+        onAdd={histAdd}
+        onUpdate={histUpdate}
+        onDelete={histDelete}
+        onZoomChange={setZoom}
         onCursorMove={moveCursor}
         onSelectChange={setSelected}
         onTextClick={handleTextClick}
@@ -180,7 +202,7 @@ function Board({ roomId }: BoardProps) {
         onFillStyle={setFillStyle}
         onRoughness={setRoughness}
         onNoteColor={setNoteColor}
-        onClear={() => { shapes.forEach((_, id) => deleteShape(id)); setSelected(null) }}
+        onClear={() => { shapes.forEach((_, id) => histDelete(id)); setSelected(null) }}
         connected={connected}
         peerCount={peers.size}
         theme={theme}
@@ -188,6 +210,69 @@ function Board({ roomId }: BoardProps) {
         roomId={roomId}
       />
 
+      {/* Bottom-left: undo/redo + zoom */}
+      <div style={{
+        position: 'fixed', bottom: 16, left: 64,
+        display: 'flex', alignItems: 'center', gap: 2,
+        background: isDark ? 'rgba(18,18,26,0.96)' : 'rgba(255,255,255,0.96)',
+        border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.08)',
+        borderRadius: 10, padding: '4px 6px',
+        backdropFilter: 'blur(24px)',
+        boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 20px rgba(0,0,0,0.1)',
+        zIndex: 100,
+      }}>
+        {[
+          { icon: <Undo2 size={15} strokeWidth={1.75} />, onClick: history.undo, disabled: !history.canUndo, title: 'Undo (⌘Z)' },
+          { icon: <Redo2 size={15} strokeWidth={1.75} />, onClick: history.redo, disabled: !history.canRedo, title: 'Redo (⌘⇧Z)' },
+        ].map((btn, i) => (
+          <button key={i} onClick={btn.onClick} disabled={btn.disabled} title={btn.title} style={{
+            width: 30, height: 30, border: 'none', background: 'transparent',
+            borderRadius: 7, cursor: btn.disabled ? 'not-allowed' : 'pointer', display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+            color: btn.disabled
+              ? (isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.2)')
+              : (isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.65)'),
+            transition: 'color 0.1s',
+          }}>
+            {btn.icon}
+          </button>
+        ))}
+
+        <div style={{ width: 1, height: 18, background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)', margin: '0 2px' }} />
+
+        <button onClick={() => canvasRef.current?.zoomOut()} title="Zoom out" style={{
+          width: 30, height: 30, border: 'none', background: 'transparent', borderRadius: 7,
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.65)',
+        }}>
+          <ZoomOut size={15} strokeWidth={1.75} />
+        </button>
+
+        <button onClick={() => canvasRef.current?.resetZoom()} title="Reset zoom" style={{
+          minWidth: 44, height: 30, border: 'none', background: 'transparent', borderRadius: 7,
+          cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'monospace',
+          color: isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.5)',
+          letterSpacing: '-0.02em',
+        }}>
+          {Math.round(zoom * 100)}%
+        </button>
+
+        <button onClick={() => canvasRef.current?.zoomIn()} title="Zoom in" style={{
+          width: 30, height: 30, border: 'none', background: 'transparent', borderRadius: 7,
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.65)',
+        }}>
+          <ZoomIn size={15} strokeWidth={1.75} />
+        </button>
+
+        <button onClick={() => canvasRef.current?.resetZoom()} title="Fit to screen" style={{
+          width: 30, height: 30, border: 'none', background: 'transparent', borderRadius: 7,
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.65)',
+        }}>
+          <Maximize2 size={13} strokeWidth={1.75} />
+        </button>
+      </div>
     </>
   )
 }
