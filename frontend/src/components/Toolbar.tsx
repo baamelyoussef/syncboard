@@ -104,8 +104,9 @@ export default function Toolbar(p: Props) {
         {TOOLS.map(({ id, Icon, label, key }) => {
           const active = p.tool === id
           return (
-            <div key={id} style={s.tooltipWrap}>
+            <div key={id} className="tool-btn" style={s.tooltipWrap}>
               <button
+                title={`${label} (${key})`}
                 onClick={() => p.onTool(id)}
                 style={{
                   ...s.toolBtn,
@@ -118,7 +119,7 @@ export default function Toolbar(p: Props) {
               >
                 <Icon size={17} strokeWidth={active ? 2 : 1.75} />
               </button>
-              <div style={{ ...s.tooltip, background: isDark ? '#1e1e2e' : '#fff', color: text, border: `1px solid ${dividerColor}` }}>
+              <div className="tooltip" style={{ ...s.tooltip, background: isDark ? '#1e1e2e' : '#fff', color: text, border: `1px solid ${dividerColor}` }}>
                 {label} <span style={{ color: textMuted, fontSize: 10 }}>{key}</span>
               </div>
             </div>
@@ -128,8 +129,9 @@ export default function Toolbar(p: Props) {
         <div style={{ width: '100%', height: 1, background: dividerColor, margin: '2px 0' }} />
 
         {/* Clear */}
-        <div style={s.tooltipWrap}>
+        <div className="tool-btn" style={s.tooltipWrap}>
           <button
+            title="Clear board"
             onClick={p.onClear}
             style={{ ...s.toolBtn, color: isDark ? 'rgba(250,82,82,0.7)' : '#e03131' }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(250,82,82,0.1)' }}
@@ -137,7 +139,7 @@ export default function Toolbar(p: Props) {
           >
             <Trash2 size={16} strokeWidth={1.75} />
           </button>
-          <div style={{ ...s.tooltip, background: isDark ? '#1e1e2e' : '#fff', color: text, border: `1px solid ${dividerColor}` }}>
+          <div className="tooltip" style={{ ...s.tooltip, background: isDark ? '#1e1e2e' : '#fff', color: text, border: `1px solid ${dividerColor}` }}>
             Clear board
           </div>
         </div>
