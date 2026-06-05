@@ -53,6 +53,8 @@ interface Props {
   noteColor: string
   noteColors: string[]
   onNoteColor: (c: string) => void
+  fontSize: number
+  onFontSize: (s: number) => void
   theme: 'dark' | 'light'
   onThemeToggle: () => void
   roomId: string
@@ -319,6 +321,35 @@ export default function Toolbar(p: Props) {
             ))}
           </div>
         </div>
+
+        {p.tool === 'text' && (
+          <>
+            <div style={{ ...s.vDivider, background: dividerColor }} />
+            <div style={s.propSection}>
+              <span style={{ ...s.propLabel, color: textMuted }}>Size</span>
+              <div style={s.swatchRow}>
+                {[14, 18, 24, 32, 48].map(sz => (
+                  <button
+                    key={sz}
+                    onClick={() => p.onFontSize(sz)}
+                    title={`${sz}px`}
+                    style={{
+                      ...s.optBtn,
+                      minWidth: 28,
+                      fontSize: 10,
+                      fontWeight: 600,
+                      color: p.fontSize === sz ? '#6c8ebf' : text,
+                      background: p.fontSize === sz ? activeBg : 'transparent',
+                      border: p.fontSize === sz ? `1px solid ${activeBorder}` : `1px solid ${dividerColor}`,
+                    }}
+                  >
+                    {sz}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         {p.tool === 'note' && (
           <>

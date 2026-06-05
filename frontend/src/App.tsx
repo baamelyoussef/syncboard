@@ -24,6 +24,7 @@ function Board({ roomId }: BoardProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [theme, setTheme] = useState<'dark' | 'light'>('light')
   const [noteColor, setNoteColor] = useState(NOTE_COLORS[0])
+  const [fontSize, setFontSize] = useState(22)
 
   const [textInput, setTextInput] = useState<{ x: number; y: number; wx: number; wy: number } | null>(null)
   const [textValue, setTextValue] = useState('')
@@ -93,7 +94,7 @@ function Board({ roomId }: BoardProps) {
           x: textInput.wx,
           y: textInput.wy,
           text: textValue,
-          fontSize: 22,
+          fontSize,
           stroke: color,
           strokeWidth,
           fill: 'transparent',
@@ -173,7 +174,7 @@ function Board({ roomId }: BoardProps) {
               border: tool === 'note' ? 'none' : '1.5px dashed rgba(108,142,191,0.6)',
               borderRadius: tool === 'note' ? 6 : 4,
               color: tool === 'note' ? 'rgba(0,0,0,0.75)' : color,
-              fontSize: tool === 'note' ? 15 : 22,
+              fontSize: tool === 'note' ? 15 : fontSize,
               fontFamily: '"Caveat", "Comic Sans MS", cursive',
               outline: 'none',
               resize: 'none',
@@ -202,6 +203,8 @@ function Board({ roomId }: BoardProps) {
         onFillStyle={setFillStyle}
         onRoughness={setRoughness}
         onNoteColor={setNoteColor}
+        fontSize={fontSize}
+        onFontSize={setFontSize}
         onClear={() => { shapes.forEach((_, id) => histDelete(id)); setSelected(new Set()) }}
         connected={connected}
         peerCount={peers.size}
