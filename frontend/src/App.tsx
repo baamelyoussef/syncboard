@@ -188,21 +188,6 @@ function Board({ roomId }: BoardProps) {
         roomId={roomId}
       />
 
-      <div style={{
-        position: 'fixed', bottom: 76, right: 16,
-        display: 'flex', alignItems: 'center', gap: 8,
-        background: panelBg, border: `1px solid ${panelBorder}`,
-        borderRadius: 8, padding: '5px 10px',
-        backdropFilter: 'blur(12px)', zIndex: 100,
-      }}>
-        <span style={{ fontSize: 11, color: textColor, fontFamily: 'monospace' }}>#{roomId}</span>
-        <button
-          onClick={() => navigator.clipboard.writeText(window.location.href)}
-          style={{ background: 'transparent', border: 'none', color: textColor, cursor: 'pointer', fontSize: 11, padding: 0 }}
-        >
-          Copy invite
-        </button>
-      </div>
     </>
   )
 }
