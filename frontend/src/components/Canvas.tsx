@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useRef, useState, forwardRef } from 'react'
 import rough from 'roughjs'
 import { v4 as uuid } from 'uuid'
 import type {
@@ -10,6 +10,7 @@ interface Props {
   shapes: Map<string, Shape>
   cursors: Map<string, CursorState>
   tool: Tool
+  theme: 'dark' | 'light'
   color: string
   strokeWidth: number
   fillStyle: FillStyle
@@ -24,15 +25,19 @@ interface Props {
   selected: string | null
 }
 
+export interface CanvasHandle {
+  getCanvas: () => HTMLCanvasElement | null
+}
+
 function idToSeed(id: string): number {
   return id.split('').reduce((acc, c, i) => acc + c.charCodeAt(0) * (i + 1), 0) % 2 ** 31
 }
 
-function drawDotGrid(ctx: CanvasRenderingContext2D, w: number, h: number, cam: Camera) {
+function drawDotGrid(ctx: CanvasRenderingContext2D, w: number, h: number, cam: Camera, dotColor: string) {
   const gap = 24 * cam.zoom
   const ox = ((cam.x % gap) + gap) % gap
   const oy = ((cam.y % gap) + gap) % gap
-  ctx.fillStyle = 'rgba(255,255,255,0.07)'
+  ctx.fillStyle = dotColor
   for (let x = ox; x < w; x += gap) {
     for (let y = oy; y < h; y += gap) {
       ctx.beginPath()
@@ -170,11 +175,15 @@ function hitTest(shape: Shape, wx: number, wy: number): boolean {
   return false
 }
 
-export default function Canvas({
-  shapes, cursors, tool, color, strokeWidth, fillStyle, roughness,
+const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
+  shapes, cursors, tool, theme, color, strokeWidth, fillStyle, roughness,
   clientId, onAdd, onUpdate, onDelete, onCursorMove, onSelectChange, onTextClick, selected
-}: Props) {
+}, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useImperativeHandle(ref, () => ({
+    getCanvas: () => canvasRef.current,
+  }))
   const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, zoom: 1 })
   const [draft, setDraft] = useState<Shape | null>(null)
   const drawing = useRef(false)
@@ -201,9 +210,11 @@ export default function Canvas({
     canvas.width = window.innerWidth
     canvas.height = window.innerHeight
 
-    ctx.fillStyle = '#13131a'
+    const bg = theme === 'dark' ? '#13131a' : '#f8f8f5'
+    const dotColor = theme === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.1)'
+    ctx.fillStyle = bg
     ctx.fillRect(0, 0, canvas.width, canvas.height)
-    drawDotGrid(ctx, canvas.width, canvas.height, camera)
+    drawDotGrid(ctx, canvas.width, canvas.height, camera, dotColor)
 
     ctx.save()
     ctx.translate(camera.x, camera.y)
@@ -229,7 +240,7 @@ export default function Canvas({
     }
 
     ctx.restore()
-  }, [shapes, draft, cursors, camera, selected])
+  }, [shapes, draft, cursors, camera, selected, theme])
 
   // Resize
   useEffect(() => {
@@ -390,4 +401,6 @@ export default function Canvas({
       onWheel={handleWheel}
     />
   )
-}
+})
+
+export default Canvas

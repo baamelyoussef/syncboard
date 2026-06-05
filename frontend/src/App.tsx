@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import Canvas from './components/Canvas'
+import type { CanvasHandle } from './components/Canvas'
 import Toolbar from './components/Toolbar'
 import { useSync } from './hooks/useSync'
+import { useRecording } from './hooks/useRecording'
 import type { Tool, FillStyle, TextShape } from './types'
 import { v4 as uuid } from 'uuid'
 
@@ -18,11 +20,14 @@ function Board({ roomId }: BoardProps) {
   const [fillStyle, setFillStyle] = useState<FillStyle>('hachure')
   const [roughness, setRoughness] = useState(1)
   const [selected, setSelected] = useState<string | null>(null)
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
 
   // Inline text editing state
   const [textInput, setTextInput] = useState<{ x: number; y: number; wx: number; wy: number } | null>(null)
   const [textValue, setTextValue] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const canvasRef = useRef<CanvasHandle>(null)
+  const { recording, toggle: toggleRecording } = useRecording(() => canvasRef.current?.getCanvas() ?? null)
 
   const { shapes, cursors, peers, connected, clientId, addShape, updateShape, deleteShape, moveCursor } = useSync(roomId)
 
@@ -69,6 +74,8 @@ function Board({ roomId }: BoardProps) {
   return (
     <>
       <Canvas
+        ref={canvasRef}
+        theme={theme}
         shapes={shapes}
         cursors={cursors}
         tool={tool}
@@ -135,6 +142,10 @@ function Board({ roomId }: BoardProps) {
         onClear={() => { shapes.forEach((_, id) => deleteShape(id)); setSelected(null) }}
         connected={connected}
         peerCount={peers.size}
+        recording={recording}
+        onRecordToggle={toggleRecording}
+        theme={theme}
+        onThemeToggle={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
       />
 
       <div style={s.roomBadge}>

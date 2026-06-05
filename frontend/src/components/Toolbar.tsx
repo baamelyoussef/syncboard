@@ -29,6 +29,10 @@ interface Props {
   onClear: () => void
   connected: boolean
   peerCount: number
+  recording: boolean
+  onRecordToggle: () => void
+  theme: 'dark' | 'light'
+  onThemeToggle: () => void
 }
 
 export default function Toolbar(p: Props) {
@@ -52,6 +56,21 @@ export default function Toolbar(p: Props) {
       <div style={s.top}>
         <span style={s.brand}>syncboard</span>
         <div style={s.topRight}>
+          <button
+            onClick={p.onThemeToggle}
+            style={s.themeBtn}
+            title={p.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {p.theme === 'dark' ? '☀' : '🌙'}
+          </button>
+          <button
+            onClick={p.onRecordToggle}
+            style={{ ...s.recBtn, ...(p.recording ? s.recBtnActive : {}) }}
+            title={p.recording ? 'Stop recording' : 'Record canvas'}
+          >
+            <span style={{ ...s.recDot, background: p.recording ? '#fa5252' : 'rgba(250,82,82,0.5)' }} />
+            {p.recording ? 'Stop' : 'Record'}
+          </button>
           <div style={{ ...s.dot, background: p.connected ? '#40c057' : '#fa5252' }} />
           <span style={s.peers}>{p.peerCount + 1} online</span>
         </div>
@@ -209,6 +228,30 @@ const s: Record<string, React.CSSProperties> = {
   topRight: { display: 'flex', alignItems: 'center', gap: 6 },
   dot: { width: 6, height: 6, borderRadius: '50%' },
   peers: { fontSize: 11, color: 'rgba(255,255,255,0.35)' },
+  recBtn: {
+    display: 'flex', alignItems: 'center', gap: 5,
+    background: 'rgba(250,82,82,0.1)',
+    border: '1px solid rgba(250,82,82,0.25)',
+    color: 'rgba(250,82,82,0.8)',
+    borderRadius: 7, padding: '3px 10px',
+    cursor: 'pointer', fontSize: 11, fontWeight: 600,
+  },
+  recBtnActive: {
+    background: 'rgba(250,82,82,0.2)',
+    border: '1px solid rgba(250,82,82,0.5)',
+    color: '#fa5252',
+  },
+  recDot: {
+    width: 7, height: 7, borderRadius: '50%',
+    animation: 'none',
+  },
+  themeBtn: {
+    background: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    color: 'rgba(255,255,255,0.7)',
+    borderRadius: 7, padding: '3px 8px',
+    cursor: 'pointer', fontSize: 13,
+  },
   props: {
     position: 'fixed',
     bottom: 16,
