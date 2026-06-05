@@ -68,7 +68,7 @@ function Board({ roomId }: BoardProps) {
   }
 
   const commitText = () => {
-    if (textInput) {
+    if (textInput && textValue.trim()) {
       if (tool === 'note') {
         histAdd({
           id: uuid(), clientId, clock: 0,
@@ -160,10 +160,11 @@ function Board({ roomId }: BoardProps) {
             value={textValue}
             onChange={e => setTextValue(e.target.value)}
             onKeyDown={e => {
+              e.stopPropagation()
               if (e.key === 'Escape') { setTextInput(null); setTextValue(''); setTool('select') }
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitText() }
             }}
-            onBlur={commitText}
+            onBlur={() => { if (textValue.trim() || tool !== 'text') commitText() }}
             style={{
               position: 'relative',
               width: tool === 'note' ? 180 : 160,
