@@ -1,7 +1,7 @@
 import {
   MousePointer2, Hand, Square, Circle, ArrowUpRight,
   Pencil, Type, Trash2, Sun, Moon, StickyNote,
-  Slash, AlignJustify,
+  Slash, AlignJustify, Undo2, Redo2, ZoomIn, ZoomOut, Maximize2,
 } from 'lucide-react'
 import type { Tool, FillStyle } from '../types'
 import ShareMenu from './ShareMenu'
@@ -56,6 +56,14 @@ interface Props {
   theme: 'dark' | 'light'
   onThemeToggle: () => void
   roomId: string
+  canUndo: boolean
+  canRedo: boolean
+  onUndo: () => void
+  onRedo: () => void
+  zoom: number
+  onZoomIn: () => void
+  onZoomOut: () => void
+  onZoomReset: () => void
 }
 
 export default function Toolbar(p: Props) {
@@ -159,6 +167,55 @@ export default function Toolbar(p: Props) {
 
       {/* Bottom properties panel */}
       <div style={{ ...s.propsBar, ...panel }}>
+
+        {/* Undo / Redo */}
+        <div style={s.propSection}>
+          <span style={{ ...s.propLabel, color: textMuted }}>History</span>
+          <div style={s.swatchRow}>
+            {[
+              { icon: <Undo2 size={14} strokeWidth={1.75} />, onClick: p.onUndo, disabled: !p.canUndo, title: 'Undo ⌘Z' },
+              { icon: <Redo2 size={14} strokeWidth={1.75} />, onClick: p.onRedo, disabled: !p.canRedo, title: 'Redo ⌘⇧Z' },
+            ].map((btn, i) => (
+              <button key={i} onClick={btn.onClick} disabled={btn.disabled} title={btn.title} style={{
+                ...s.optBtn,
+                color: btn.disabled ? (isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)') : text,
+                background: 'transparent',
+                border: `1px solid ${btn.disabled ? 'transparent' : dividerColor}`,
+                cursor: btn.disabled ? 'default' : 'pointer',
+              }}>
+                {btn.icon}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ ...s.vDivider, background: dividerColor }} />
+
+        {/* Zoom */}
+        <div style={s.propSection}>
+          <span style={{ ...s.propLabel, color: textMuted }}>Zoom</span>
+          <div style={s.swatchRow}>
+            <button onClick={p.onZoomOut} title="Zoom out" style={{ ...s.optBtn, color: text, background: 'transparent', border: `1px solid ${dividerColor}` }}>
+              <ZoomOut size={13} strokeWidth={1.75} />
+            </button>
+            <button onClick={p.onZoomReset} title="Reset zoom" style={{
+              height: 24, minWidth: 42, border: `1px solid ${dividerColor}`,
+              background: 'transparent', borderRadius: 6, cursor: 'pointer',
+              fontSize: 11, fontWeight: 600, fontFamily: 'monospace',
+              color: textMuted, letterSpacing: '-0.02em', padding: '0 6px',
+            }}>
+              {Math.round(p.zoom * 100)}%
+            </button>
+            <button onClick={p.onZoomIn} title="Zoom in" style={{ ...s.optBtn, color: text, background: 'transparent', border: `1px solid ${dividerColor}` }}>
+              <ZoomIn size={13} strokeWidth={1.75} />
+            </button>
+            <button onClick={p.onZoomReset} title="Fit view" style={{ ...s.optBtn, color: text, background: 'transparent', border: `1px solid ${dividerColor}` }}>
+              <Maximize2 size={12} strokeWidth={1.75} />
+            </button>
+          </div>
+        </div>
+
+        <div style={{ ...s.vDivider, background: dividerColor }} />
 
         {/* Stroke color */}
         <div style={s.propSection}>

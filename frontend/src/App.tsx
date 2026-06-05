@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { Undo2, Redo2, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
 import Canvas from './components/Canvas'
 import type { CanvasHandle } from './components/Canvas'
 import Toolbar from './components/Toolbar'
@@ -208,71 +207,16 @@ function Board({ roomId }: BoardProps) {
         theme={theme}
         onThemeToggle={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
         roomId={roomId}
+        canUndo={history.canUndo}
+        canRedo={history.canRedo}
+        onUndo={history.undo}
+        onRedo={history.redo}
+        zoom={zoom}
+        onZoomIn={() => canvasRef.current?.zoomIn()}
+        onZoomOut={() => canvasRef.current?.zoomOut()}
+        onZoomReset={() => canvasRef.current?.resetZoom()}
       />
 
-      {/* Bottom-left: undo/redo + zoom */}
-      <div style={{
-        position: 'fixed', bottom: 16, left: 64,
-        display: 'flex', alignItems: 'center', gap: 2,
-        background: isDark ? 'rgba(18,18,26,0.96)' : 'rgba(255,255,255,0.96)',
-        border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.08)',
-        borderRadius: 10, padding: '4px 6px',
-        backdropFilter: 'blur(24px)',
-        boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 20px rgba(0,0,0,0.1)',
-        zIndex: 100,
-      }}>
-        {[
-          { icon: <Undo2 size={15} strokeWidth={1.75} />, onClick: history.undo, disabled: !history.canUndo, title: 'Undo (⌘Z)' },
-          { icon: <Redo2 size={15} strokeWidth={1.75} />, onClick: history.redo, disabled: !history.canRedo, title: 'Redo (⌘⇧Z)' },
-        ].map((btn, i) => (
-          <button key={i} onClick={btn.onClick} disabled={btn.disabled} title={btn.title} style={{
-            width: 30, height: 30, border: 'none', background: 'transparent',
-            borderRadius: 7, cursor: btn.disabled ? 'not-allowed' : 'pointer', display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            color: btn.disabled
-              ? (isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.2)')
-              : (isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.65)'),
-            transition: 'color 0.1s',
-          }}>
-            {btn.icon}
-          </button>
-        ))}
-
-        <div style={{ width: 1, height: 18, background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)', margin: '0 2px' }} />
-
-        <button onClick={() => canvasRef.current?.zoomOut()} title="Zoom out" style={{
-          width: 30, height: 30, border: 'none', background: 'transparent', borderRadius: 7,
-          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.65)',
-        }}>
-          <ZoomOut size={15} strokeWidth={1.75} />
-        </button>
-
-        <button onClick={() => canvasRef.current?.resetZoom()} title="Reset zoom" style={{
-          minWidth: 44, height: 30, border: 'none', background: 'transparent', borderRadius: 7,
-          cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'monospace',
-          color: isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.5)',
-          letterSpacing: '-0.02em',
-        }}>
-          {Math.round(zoom * 100)}%
-        </button>
-
-        <button onClick={() => canvasRef.current?.zoomIn()} title="Zoom in" style={{
-          width: 30, height: 30, border: 'none', background: 'transparent', borderRadius: 7,
-          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.65)',
-        }}>
-          <ZoomIn size={15} strokeWidth={1.75} />
-        </button>
-
-        <button onClick={() => canvasRef.current?.resetZoom()} title="Fit to screen" style={{
-          width: 30, height: 30, border: 'none', background: 'transparent', borderRadius: 7,
-          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.65)',
-        }}>
-          <Maximize2 size={13} strokeWidth={1.75} />
-        </button>
-      </div>
     </>
   )
 }
