@@ -4,6 +4,7 @@ import {
   Slash, AlignJustify,
 } from 'lucide-react'
 import type { Tool, FillStyle } from '../types'
+import ShareMenu from './ShareMenu'
 
 const TOOLS: { id: Tool; Icon: React.ElementType; label: string; key: string }[] = [
   { id: 'select',  Icon: MousePointer2,  label: 'Select',    key: 'V' },
@@ -54,6 +55,7 @@ interface Props {
   onNoteColor: (c: string) => void
   theme: 'dark' | 'light'
   onThemeToggle: () => void
+  roomId: string
 }
 
 export default function Toolbar(p: Props) {
@@ -156,6 +158,8 @@ export default function Toolbar(p: Props) {
           >
             {isDark ? <Sun size={15} strokeWidth={1.75} /> : <Moon size={15} strokeWidth={1.75} />}
           </button>
+
+          <ShareMenu roomId={p.roomId} isDark={isDark} />
 
           {/* Online status */}
           <div style={{ ...s.statusPill, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', border: `1px solid ${dividerColor}` }}>

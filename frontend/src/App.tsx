@@ -185,6 +185,7 @@ function Board({ roomId }: BoardProps) {
         peerCount={peers.size}
         theme={theme}
         onThemeToggle={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+        roomId={roomId}
       />
 
       <div style={{
