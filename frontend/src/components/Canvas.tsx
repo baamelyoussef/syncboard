@@ -37,6 +37,87 @@ function idToSeed(id: string): number {
   return id.split('').reduce((acc, c, i) => acc + c.charCodeAt(0) * (i + 1), 0) % 2 ** 31
 }
 
+// ── Resize helpers ──────────────────────────────────────────────────────────
+
+type Handle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
+const HANDLES: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
+const HANDLE_CURSORS: Record<Handle, string> = {
+  nw: 'nw-resize', n: 'n-resize', ne: 'ne-resize', e: 'e-resize',
+  se: 'se-resize', s: 's-resize', sw: 'sw-resize', w: 'w-resize',
+}
+
+interface BBox { x: number; y: number; w: number; h: number }
+
+function getBBox(shape: Shape): BBox | null {
+  if (shape.kind === 'rect' || shape.kind === 'note') {
+    const s = shape as RectShape | NoteShape
+    return { x: Math.min(s.x, s.x + s.width), y: Math.min(s.y, s.y + s.height), w: Math.abs(s.width), h: Math.abs(s.height) }
+  }
+  if (shape.kind === 'ellipse') {
+    const el = shape as EllipseShape
+    return { x: el.x - el.radiusX, y: el.y - el.radiusY, w: el.radiusX * 2, h: el.radiusY * 2 }
+  }
+  if (shape.kind === 'text') {
+    const tx = shape as TextShape
+    return { x: tx.x, y: tx.y - tx.fontSize, w: Math.max(40, tx.text.length * tx.fontSize * 0.55), h: tx.fontSize * 1.4 }
+  }
+  if (shape.kind === 'arrow' || shape.kind === 'pen') {
+    const pts = (shape as ArrowShape | PenShape).points
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    for (let i = 0; i < pts.length; i += 2) {
+      minX = Math.min(minX, pts[i]); maxX = Math.max(maxX, pts[i])
+      minY = Math.min(minY, pts[i + 1]); maxY = Math.max(maxY, pts[i + 1])
+    }
+    return { x: minX, y: minY, w: Math.max(4, maxX - minX), h: Math.max(4, maxY - minY) }
+  }
+  return null
+}
+
+function getHandlePos(bbox: BBox, h: Handle): { x: number; y: number } {
+  const { x, y, w, ht } = { ...bbox, ht: bbox.h }
+  switch (h) {
+    case 'nw': return { x, y }
+    case 'n':  return { x: x + w / 2, y }
+    case 'ne': return { x: x + w, y }
+    case 'e':  return { x: x + w, y: y + ht / 2 }
+    case 'se': return { x: x + w, y: y + ht }
+    case 's':  return { x: x + w / 2, y: y + ht }
+    case 'sw': return { x, y: y + ht }
+    case 'w':  return { x, y: y + ht / 2 }
+  }
+}
+
+function applyResize(shape: Shape, handle: Handle, wx: number, wy: number, start: BBox): Partial<Shape> {
+  const { x: sx, y: sy, w: sw, h: sh } = start
+  let nx = sx, ny = sy, nw = sw, nh = sh
+
+  switch (handle) {
+    case 'nw': nx = wx; ny = wy; nw = (sx + sw) - wx; nh = (sy + sh) - wy; break
+    case 'n':  ny = wy; nh = (sy + sh) - wy; break
+    case 'ne': ny = wy; nw = wx - sx;        nh = (sy + sh) - wy; break
+    case 'e':  nw = wx - sx; break
+    case 'se': nw = wx - sx; nh = wy - sy; break
+    case 's':  nh = wy - sy; break
+    case 'sw': nx = wx; nw = (sx + sw) - wx; nh = wy - sy; break
+    case 'w':  nx = wx; nw = (sx + sw) - wx; break
+  }
+
+  nw = Math.max(8, nw); nh = Math.max(8, nh)
+
+  if (shape.kind === 'rect' || shape.kind === 'note') return { x: nx, y: ny, width: nw, height: nh } as Partial<Shape>
+  if (shape.kind === 'ellipse') return { x: nx + nw / 2, y: ny + nh / 2, radiusX: nw / 2, radiusY: nh / 2 } as Partial<Shape>
+  if (shape.kind === 'text') {
+    const scale = nh / sh
+    return { x: nx, y: ny + nh, fontSize: Math.max(8, Math.round((shape as TextShape).fontSize * scale)) } as Partial<Shape>
+  }
+  if (shape.kind === 'arrow' || shape.kind === 'pen') {
+    const pts = [...(shape as ArrowShape | PenShape).points]
+    const scaleX = nw / Math.max(1, sw), scaleY = nh / Math.max(1, sh)
+    return { points: pts.map((v, i) => i % 2 === 0 ? nx + (v - sx) * scaleX : ny + (v - sy) * scaleY) } as Partial<Shape>
+  }
+  return {}
+}
+
 function drawDotGrid(ctx: CanvasRenderingContext2D, w: number, h: number, cam: Camera, dotColor: string) {
   const gap = 24 * cam.zoom
   const ox = ((cam.x % gap) + gap) % gap
@@ -273,6 +354,8 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
   const dragOffset = useRef({ x: 0, y: 0 })
   const dragOffsets = useRef<Map<string, { x: number; y: number }>>(new Map())
   const dragging = useRef(false)
+  const resizingHandle = useRef<{ handle: Handle; shapeId: string; startBBox: BBox } | null>(null)
+  const [hoveredHandle, setHoveredHandle] = useState<Handle | null>(null)
 
   const toWorld = useCallback((sx: number, sy: number, cam: Camera) => ({
     x: (sx - cam.x) / cam.zoom,
@@ -304,6 +387,28 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
     }
     if (draft) drawShape(rc, ctx, draft, false)
 
+    // Resize handles — only when exactly one shape is selected
+    if (selected.size === 1) {
+      const selShape = shapes.get([...selected][0])
+      if (selShape) {
+        const bbox = getBBox(selShape)
+        if (bbox) {
+          const hs = 5 / camera.zoom
+          const lw = 1.5 / camera.zoom
+          HANDLES.forEach(h => {
+            const pos = getHandlePos(bbox, h)
+            ctx.fillStyle = hoveredHandle === h ? '#4a72a8' : '#6c8ebf'
+            ctx.strokeStyle = '#fff'
+            ctx.lineWidth = lw
+            ctx.beginPath()
+            ctx.rect(pos.x - hs, pos.y - hs, hs * 2, hs * 2)
+            ctx.fill()
+            ctx.stroke()
+          })
+        }
+      }
+    }
+
     // Remote cursors (in world space)
     for (const [, cursor] of cursors) {
       ctx.save()
@@ -319,7 +424,7 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
     }
 
     ctx.restore()
-  }, [shapes, draft, cursors, camera, selected, theme])
+  }, [shapes, draft, cursors, camera, selected, theme, hoveredHandle])
 
   useEffect(() => { onZoomChange?.(camera.zoom) }, [camera.zoom, onZoomChange])
 
@@ -364,6 +469,25 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
     }
 
     const world = toWorld(e.clientX, e.clientY, camera)
+
+    // Check resize handles first (only for single selection, select tool)
+    if (tool === 'select' && selected.size === 1) {
+      const selShape = shapes.get([...selected][0])
+      if (selShape) {
+        const bbox = getBBox(selShape)
+        if (bbox) {
+          const tolerance = 8 / camera.zoom
+          const hit = HANDLES.find(h => {
+            const pos = getHandlePos(bbox, h)
+            return Math.abs(world.x - pos.x) <= tolerance && Math.abs(world.y - pos.y) <= tolerance
+          })
+          if (hit) {
+            resizingHandle.current = { handle: hit, shapeId: selShape.id, startBBox: bbox }
+            return
+          }
+        }
+      }
+    }
 
     if (tool === 'select') {
       const arr = [...shapes.values()]
@@ -446,6 +570,32 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
       return
     }
 
+    // Resize in progress
+    if (resizingHandle.current) {
+      const { handle, shapeId, startBBox } = resizingHandle.current
+      const shape = shapes.get(shapeId)
+      if (shape) onUpdate(shapeId, applyResize(shape, handle, world.x, world.y, startBBox))
+      return
+    }
+
+    // Update hovered handle for cursor feedback
+    if (tool === 'select' && selected.size === 1) {
+      const selShape = shapes.get([...selected][0])
+      if (selShape) {
+        const bbox = getBBox(selShape)
+        if (bbox) {
+          const tolerance = 8 / camera.zoom
+          const hit = HANDLES.find(h => {
+            const pos = getHandlePos(bbox, h)
+            return Math.abs(world.x - pos.x) <= tolerance && Math.abs(world.y - pos.y) <= tolerance
+          }) ?? null
+          setHoveredHandle(hit)
+        }
+      }
+    } else if (hoveredHandle !== null) {
+      setHoveredHandle(null)
+    }
+
     if (dragging.current && dragOffsets.current.size > 0) {
       for (const [id, off] of dragOffsets.current) {
         const shape = shapes.get(id)
@@ -474,11 +624,12 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
       penPoints.current = [...penPoints.current, world.x, world.y]
       setDraft({ ...draft, points: penPoints.current })
     }
-  }, [camera, draft, drawing, selected, shapes, onCursorMove, onUpdate, toWorld])
+  }, [camera, draft, drawing, selected, shapes, hoveredHandle, onCursorMove, onUpdate, toWorld])
 
   const handleMouseUp = useCallback(() => {
     panning.current = false
     dragging.current = false
+    resizingHandle.current = null
 
     if (!drawing.current || !draft) return
     drawing.current = false
@@ -493,7 +644,13 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
     setDraft(null)
   }, [draft, onAdd])
 
-  const cursor = tool === 'pan' || spaceHeld.current ? 'grab' : tool === 'select' ? 'default' : 'crosshair'
+  const cursor = resizingHandle.current
+    ? HANDLE_CURSORS[resizingHandle.current.handle]
+    : hoveredHandle
+    ? HANDLE_CURSORS[hoveredHandle]
+    : tool === 'pan' || spaceHeld.current ? 'grab'
+    : tool === 'select' ? 'default'
+    : 'crosshair'
 
   return (
     <canvas
