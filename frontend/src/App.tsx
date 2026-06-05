@@ -3,13 +3,14 @@ import Canvas from './components/Canvas'
 import type { CanvasHandle } from './components/Canvas'
 import Toolbar from './components/Toolbar'
 import { useSync } from './hooks/useSync'
-import { useRecording } from './hooks/useRecording'
-import type { Tool, FillStyle, TextShape } from './types'
+import type { Tool, FillStyle, TextShape, NoteShape } from './types'
 import { v4 as uuid } from 'uuid'
 
 const KEY_TOOL: Record<string, Tool> = {
-  v: 'select', h: 'pan', r: 'rect', e: 'ellipse', a: 'arrow', p: 'pen', t: 'text',
+  v: 'select', h: 'pan', r: 'rect', e: 'ellipse', a: 'arrow', p: 'pen', t: 'text', n: 'note',
 }
+
+const NOTE_COLORS = ['#fef08a', '#bbf7d0', '#bfdbfe', '#fecdd3', '#e9d5ff', '#fed7aa']
 
 interface BoardProps { roomId: string }
 
@@ -21,17 +22,15 @@ function Board({ roomId }: BoardProps) {
   const [roughness, setRoughness] = useState(1)
   const [selected, setSelected] = useState<string | null>(null)
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const [noteColor, setNoteColor] = useState(NOTE_COLORS[0])
 
-  // Inline text editing state
   const [textInput, setTextInput] = useState<{ x: number; y: number; wx: number; wy: number } | null>(null)
   const [textValue, setTextValue] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const canvasRef = useRef<CanvasHandle>(null)
-  const { recording, toggle: toggleRecording } = useRecording(() => canvasRef.current?.getCanvas() ?? null)
 
   const { shapes, cursors, peers, connected, clientId, addShape, updateShape, deleteShape, moveCursor } = useSync(roomId)
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
@@ -42,7 +41,6 @@ function Board({ roomId }: BoardProps) {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
-  // When text tool is active and user clicks, open inline textarea
   const handleTextClick = (screenX: number, screenY: number, worldX: number, worldY: number) => {
     setTextInput({ x: screenX, y: screenY, wx: worldX, wy: worldY })
     setTextValue('')
@@ -50,26 +48,50 @@ function Board({ roomId }: BoardProps) {
   }
 
   const commitText = () => {
-    if (textInput && textValue.trim()) {
-      addShape({
-        id: uuid(), clientId, clock: 0,
-        kind: 'text',
-        x: textInput.wx,
-        y: textInput.wy,
-        text: textValue,
-        fontSize: 22,
-        stroke: color,
-        strokeWidth,
-        fill: 'transparent',
-        fillStyle: 'none',
-        roughness: 0,
-        opacity: 1,
-      } as TextShape)
+    if (textInput) {
+      if (tool === 'note') {
+        addShape({
+          id: uuid(), clientId, clock: 0,
+          kind: 'note',
+          x: textInput.wx - 10,
+          y: textInput.wy - 10,
+          width: 200,
+          height: 160,
+          text: textValue,
+          noteColor,
+          stroke: 'transparent',
+          strokeWidth: 0,
+          fill: noteColor,
+          fillStyle: 'solid',
+          roughness: 0,
+          opacity: 1,
+        } as NoteShape)
+      } else if (textValue.trim()) {
+        addShape({
+          id: uuid(), clientId, clock: 0,
+          kind: 'text',
+          x: textInput.wx,
+          y: textInput.wy,
+          text: textValue,
+          fontSize: 22,
+          stroke: color,
+          strokeWidth,
+          fill: 'transparent',
+          fillStyle: 'none',
+          roughness: 0,
+          opacity: 1,
+        } as TextShape)
+      }
     }
     setTextInput(null)
     setTextValue('')
     setTool('select')
   }
+
+  const isDark = theme === 'dark'
+  const panelBg = isDark ? 'rgba(18,18,26,0.97)' : 'rgba(255,255,255,0.97)'
+  const panelBorder = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)'
+  const textColor = isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'
 
   return (
     <>
@@ -93,39 +115,55 @@ function Board({ roomId }: BoardProps) {
         onTextClick={handleTextClick}
       />
 
-      {/* Inline text editor */}
+      {/* Inline editor for text and notes */}
       {textInput && (
-        <textarea
-          ref={textareaRef}
-          value={textValue}
-          onChange={e => setTextValue(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Escape') { setTextInput(null); setTextValue(''); setTool('select') }
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitText() }
-          }}
-          onBlur={commitText}
-          style={{
-            position: 'fixed',
-            left: textInput.x,
-            top: textInput.y - 22,
-            minWidth: 120,
-            minHeight: 36,
-            background: 'transparent',
-            border: '1.5px dashed rgba(108,142,191,0.6)',
-            borderRadius: 4,
-            color,
-            fontSize: 22,
-            fontFamily: '"Caveat", "Comic Sans MS", cursive',
-            outline: 'none',
-            resize: 'none',
-            padding: '2px 6px',
-            zIndex: 200,
-            caretColor: color,
-            lineHeight: 1.3,
-          }}
-          placeholder="Type here..."
-          autoComplete="off"
-        />
+        <div style={{
+          position: 'fixed',
+          left: textInput.x - 10,
+          top: textInput.y - 10,
+          zIndex: 200,
+        }}>
+          {tool === 'note' && (
+            <div style={{
+              width: 200, height: 160,
+              background: noteColor,
+              borderRadius: 8,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+              position: 'absolute',
+              top: 0, left: 0,
+              pointerEvents: 'none',
+            }} />
+          )}
+          <textarea
+            ref={textareaRef}
+            value={textValue}
+            onChange={e => setTextValue(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Escape') { setTextInput(null); setTextValue(''); setTool('select') }
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitText() }
+            }}
+            onBlur={commitText}
+            style={{
+              position: 'relative',
+              width: tool === 'note' ? 180 : 160,
+              minHeight: tool === 'note' ? 140 : 36,
+              background: 'transparent',
+              border: tool === 'note' ? 'none' : '1.5px dashed rgba(108,142,191,0.6)',
+              borderRadius: tool === 'note' ? 6 : 4,
+              color: tool === 'note' ? 'rgba(0,0,0,0.75)' : color,
+              fontSize: tool === 'note' ? 15 : 22,
+              fontFamily: '"Caveat", "Comic Sans MS", cursive',
+              outline: 'none',
+              resize: 'none',
+              padding: tool === 'note' ? '12px' : '2px 6px',
+              zIndex: 1,
+              caretColor: tool === 'note' ? 'rgba(0,0,0,0.75)' : color,
+              lineHeight: 1.4,
+            }}
+            placeholder={tool === 'note' ? 'Add a note…' : 'Type here…'}
+            autoComplete="off"
+          />
+        </div>
       )}
 
       <Toolbar
@@ -134,23 +172,33 @@ function Board({ roomId }: BoardProps) {
         strokeWidth={strokeWidth}
         fillStyle={fillStyle}
         roughness={roughness}
+        noteColor={noteColor}
+        noteColors={NOTE_COLORS}
         onTool={t => { setTool(t); setSelected(null) }}
         onColor={setColor}
         onStrokeWidth={setStrokeWidth}
         onFillStyle={setFillStyle}
         onRoughness={setRoughness}
+        onNoteColor={setNoteColor}
         onClear={() => { shapes.forEach((_, id) => deleteShape(id)); setSelected(null) }}
         connected={connected}
         peerCount={peers.size}
-        recording={recording}
-        onRecordToggle={toggleRecording}
         theme={theme}
         onThemeToggle={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
       />
 
-      <div style={s.roomBadge}>
-        <span style={s.roomId}>#{roomId}</span>
-        <button onClick={() => navigator.clipboard.writeText(window.location.href)} style={s.copyBtn}>
+      <div style={{
+        position: 'fixed', bottom: 76, right: 16,
+        display: 'flex', alignItems: 'center', gap: 8,
+        background: panelBg, border: `1px solid ${panelBorder}`,
+        borderRadius: 8, padding: '5px 10px',
+        backdropFilter: 'blur(12px)', zIndex: 100,
+      }}>
+        <span style={{ fontSize: 11, color: textColor, fontFamily: 'monospace' }}>#{roomId}</span>
+        <button
+          onClick={() => navigator.clipboard.writeText(window.location.href)}
+          style={{ background: 'transparent', border: 'none', color: textColor, cursor: 'pointer', fontSize: 11, padding: 0 }}
+        >
           Copy invite
         </button>
       </div>
@@ -176,10 +224,22 @@ function Join() {
   return (
     <div style={s.join}>
       <div style={s.joinCard}>
-        <h1 style={s.title}>syncboard</h1>
-        <p style={s.sub}>Real-time collaborative whiteboard with hand-drawn feel</p>
+        <div style={s.joinLogo}>
+          <svg width="32" height="32" viewBox="0 0 22 22" fill="none">
+            <rect x="1" y="1" width="9" height="9" rx="2" stroke="#6c8ebf" strokeWidth="1.8" fill="none" />
+            <rect x="12" y="1" width="9" height="9" rx="2" stroke="#c084fc" strokeWidth="1.8" fill="none" />
+            <rect x="1" y="12" width="9" height="9" rx="2" stroke="#f9a8d4" strokeWidth="1.8" fill="none" />
+            <rect x="12" y="12" width="9" height="9" rx="2" stroke="#6ee7b7" strokeWidth="1.8" fill="none" />
+          </svg>
+          <span style={s.joinBrandName}>syncboard</span>
+        </div>
+        <p style={s.joinSub}>Real-time collaborative whiteboard</p>
         <button onClick={create} style={s.createBtn}>Create a board →</button>
-        <div style={s.orRow}><div style={s.orLine}/><span style={s.orText}>or join existing</span><div style={s.orLine}/></div>
+        <div style={s.orRow}>
+          <div style={s.orLine} />
+          <span style={s.orText}>or join existing</span>
+          <div style={s.orLine} />
+        </div>
         <div style={s.joinRow}>
           <input
             placeholder="Enter room ID"
@@ -201,22 +261,21 @@ export default function App() {
 }
 
 const s: Record<string, React.CSSProperties> = {
-  join: {
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    height: '100vh', background: '#13131a',
-  },
+  join: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#13131a' },
   joinCard: {
     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
     background: 'rgba(22,22,30,0.98)',
     border: '1px solid rgba(255,255,255,0.07)',
-    borderRadius: 16, padding: '40px 48px',
+    borderRadius: 18, padding: '40px 48px',
     boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+    minWidth: 340,
   },
-  title: { fontSize: 38, fontWeight: 800, letterSpacing: '-0.04em', color: '#fff', margin: 0 },
-  sub: { fontSize: 13, color: 'rgba(255,255,255,0.35)', margin: 0, textAlign: 'center', maxWidth: 300 },
+  joinLogo: { display: 'flex', alignItems: 'center', gap: 10 },
+  joinBrandName: { fontSize: 26, fontWeight: 800, letterSpacing: '-0.04em', color: '#fff' },
+  joinSub: { fontSize: 13, color: 'rgba(255,255,255,0.3)', margin: 0, textAlign: 'center' },
   createBtn: {
     background: '#6c8ebf', border: 'none', color: '#fff',
-    borderRadius: 10, padding: '12px 28px', fontWeight: 700, fontSize: 14,
+    borderRadius: 10, padding: '12px 0', fontWeight: 700, fontSize: 14,
     cursor: 'pointer', width: '100%', letterSpacing: '-0.01em',
   },
   orRow: { display: 'flex', alignItems: 'center', gap: 10, width: '100%' },
@@ -231,17 +290,5 @@ const s: Record<string, React.CSSProperties> = {
   joinBtn: {
     background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)',
     color: '#fff', borderRadius: 8, padding: '9px 18px', cursor: 'pointer', fontSize: 13,
-  },
-  roomBadge: {
-    position: 'fixed', bottom: 72, right: 16,
-    display: 'flex', alignItems: 'center', gap: 8,
-    background: 'rgba(22,22,30,0.95)', border: '1px solid rgba(255,255,255,0.07)',
-    borderRadius: 8, padding: '5px 10px',
-    backdropFilter: 'blur(10px)', zIndex: 100,
-  },
-  roomId: { fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' },
-  copyBtn: {
-    background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)',
-    cursor: 'pointer', fontSize: 11, padding: 0,
   },
 }

@@ -1,18 +1,38 @@
+import {
+  MousePointer2, Hand, Square, Circle, ArrowUpRight,
+  Pencil, Type, Trash2, Sun, Moon, StickyNote,
+  Slash, AlignJustify,
+} from 'lucide-react'
 import type { Tool, FillStyle } from '../types'
 
-const TOOLS: { id: Tool; icon: string; label: string; key: string }[] = [
-  { id: 'select',  icon: '↖', label: 'Select',    key: 'V' },
-  { id: 'pan',     icon: '✋', label: 'Pan',       key: 'H' },
-  { id: 'rect',    icon: '▭', label: 'Rectangle', key: 'R' },
-  { id: 'ellipse', icon: '○', label: 'Ellipse',   key: 'E' },
-  { id: 'arrow',   icon: '↗', label: 'Arrow',     key: 'A' },
-  { id: 'pen',     icon: '✏', label: 'Pen',       key: 'P' },
-  { id: 'text',    icon: 'T', label: 'Text',      key: 'T' },
+const TOOLS: { id: Tool; Icon: React.ElementType; label: string; key: string }[] = [
+  { id: 'select',  Icon: MousePointer2,  label: 'Select',    key: 'V' },
+  { id: 'pan',     Icon: Hand,           label: 'Pan',       key: 'H' },
+  { id: 'rect',    Icon: Square,         label: 'Rectangle', key: 'R' },
+  { id: 'ellipse', Icon: Circle,         label: 'Ellipse',   key: 'E' },
+  { id: 'arrow',   Icon: ArrowUpRight,   label: 'Arrow',     key: 'A' },
+  { id: 'pen',     Icon: Pencil,         label: 'Pen',       key: 'P' },
+  { id: 'text',    Icon: Type,           label: 'Text',      key: 'T' },
+  { id: 'note',    Icon: StickyNote,     label: 'Note',      key: 'N' },
 ]
 
-const COLORS = [
-  '#ffffff', '#f08c00', '#e03131', '#c2255c',
-  '#6741d9', '#1971c2', '#0c8599', '#2f9e44',
+const PALETTE = [
+  '#e03131', '#f08c00', '#f9c74f', '#2f9e44',
+  '#1971c2', '#6741d9', '#c2255c', '#1a1a2e',
+  '#ffffff', '#adb5bd',
+]
+
+const FILL_OPTS: { id: FillStyle; Icon: React.ElementType; label: string }[] = [
+  { id: 'none',    Icon: Slash,          label: 'No fill' },
+  { id: 'hachure', Icon: AlignJustify,   label: 'Hachure' },
+  { id: 'solid',   Icon: Square,         label: 'Solid' },
+]
+
+const WIDTHS = [1, 2, 4, 6]
+const ROUGHNESS_LEVELS = [
+  { value: 0,   label: 'Smooth' },
+  { value: 1,   label: 'Normal' },
+  { value: 2.5, label: 'Rough' },
 ]
 
 interface Props {
@@ -29,67 +49,140 @@ interface Props {
   onClear: () => void
   connected: boolean
   peerCount: number
-  recording: boolean
-  onRecordToggle: () => void
+  noteColor: string
+  noteColors: string[]
+  onNoteColor: (c: string) => void
   theme: 'dark' | 'light'
   onThemeToggle: () => void
 }
 
 export default function Toolbar(p: Props) {
+  const isDark = p.theme === 'dark'
+
+  const panel: React.CSSProperties = {
+    background: isDark ? 'rgba(18,18,26,0.96)' : 'rgba(255,255,255,0.96)',
+    border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.08)',
+    backdropFilter: 'blur(24px)',
+    WebkitBackdropFilter: 'blur(24px)',
+    boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.5)' : '0 8px 32px rgba(0,0,0,0.12)',
+  }
+
+  const text = isDark ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.7)'
+  const textMuted = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)'
+  const activeBg = isDark ? 'rgba(108,142,191,0.25)' : 'rgba(108,142,191,0.18)'
+  const activeBorder = 'rgba(108,142,191,0.6)'
+  const hoverBg = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'
+  const dividerColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)'
+
   return (
     <>
-      {/* Left tool panel */}
-      <div style={s.left}>
-        {TOOLS.map(t => (
-          <button
-            key={t.id}
-            title={`${t.label} (${t.key})`}
-            onClick={() => p.onTool(t.id)}
-            style={{ ...s.btn, ...(p.tool === t.id ? s.active : {}) }}
-          >
-            <span style={s.icon}>{t.icon}</span>
-          </button>
-        ))}
-      </div>
+      {/* Left tool rail */}
+      <div style={{ ...s.rail, ...panel }}>
+        {/* Logo mark */}
+        <div style={s.logoMark}>
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <rect x="1" y="1" width="9" height="9" rx="2" stroke={isDark ? '#6c8ebf' : '#4a72a8'} strokeWidth="1.5" fill="none" />
+            <rect x="12" y="1" width="9" height="9" rx="2" stroke={isDark ? '#c084fc' : '#9333ea'} strokeWidth="1.5" fill="none" />
+            <rect x="1" y="12" width="9" height="9" rx="2" stroke={isDark ? '#f9a8d4' : '#db2777'} strokeWidth="1.5" fill="none" />
+            <rect x="12" y="12" width="9" height="9" rx="2" stroke={isDark ? '#6ee7b7' : '#059669'} strokeWidth="1.5" fill="none" />
+          </svg>
+        </div>
 
-      {/* Top bar */}
-      <div style={s.top}>
-        <span style={s.brand}>syncboard</span>
-        <div style={s.topRight}>
+        <div style={{ width: '100%', height: 1, background: dividerColor, margin: '2px 0' }} />
+
+        {/* Tools */}
+        {TOOLS.map(({ id, Icon, label, key }) => {
+          const active = p.tool === id
+          return (
+            <div key={id} style={s.tooltipWrap}>
+              <button
+                onClick={() => p.onTool(id)}
+                style={{
+                  ...s.toolBtn,
+                  color: active ? '#6c8ebf' : text,
+                  background: active ? activeBg : 'transparent',
+                  outline: active ? `1.5px solid ${activeBorder}` : 'none',
+                }}
+                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = hoverBg }}
+                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+              >
+                <Icon size={17} strokeWidth={active ? 2 : 1.75} />
+              </button>
+              <div style={{ ...s.tooltip, background: isDark ? '#1e1e2e' : '#fff', color: text, border: `1px solid ${dividerColor}` }}>
+                {label} <span style={{ color: textMuted, fontSize: 10 }}>{key}</span>
+              </div>
+            </div>
+          )
+        })}
+
+        <div style={{ width: '100%', height: 1, background: dividerColor, margin: '2px 0' }} />
+
+        {/* Clear */}
+        <div style={s.tooltipWrap}>
           <button
-            onClick={p.onThemeToggle}
-            style={s.themeBtn}
-            title={p.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            onClick={p.onClear}
+            style={{ ...s.toolBtn, color: isDark ? 'rgba(250,82,82,0.7)' : '#e03131' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(250,82,82,0.1)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
           >
-            {p.theme === 'dark' ? '☀' : '🌙'}
+            <Trash2 size={16} strokeWidth={1.75} />
           </button>
-          <button
-            onClick={p.onRecordToggle}
-            style={{ ...s.recBtn, ...(p.recording ? s.recBtnActive : {}) }}
-            title={p.recording ? 'Stop recording' : 'Record canvas'}
-          >
-            <span style={{ ...s.recDot, background: p.recording ? '#fa5252' : 'rgba(250,82,82,0.5)' }} />
-            {p.recording ? 'Stop' : 'Record'}
-          </button>
-          <div style={{ ...s.dot, background: p.connected ? '#40c057' : '#fa5252' }} />
-          <span style={s.peers}>{p.peerCount + 1} online</span>
+          <div style={{ ...s.tooltip, background: isDark ? '#1e1e2e' : '#fff', color: text, border: `1px solid ${dividerColor}` }}>
+            Clear board
+          </div>
         </div>
       </div>
 
-      {/* Properties panel (bottom) */}
-      <div style={s.props}>
+      {/* Top bar */}
+      <div style={{ ...s.topBar, ...panel }}>
+        <div style={s.brand}>
+          <svg width="16" height="16" viewBox="0 0 22 22" fill="none">
+            <rect x="1" y="1" width="9" height="9" rx="2" stroke="#6c8ebf" strokeWidth="1.8" fill="none" />
+            <rect x="12" y="1" width="9" height="9" rx="2" stroke="#c084fc" strokeWidth="1.8" fill="none" />
+            <rect x="1" y="12" width="9" height="9" rx="2" stroke="#f9a8d4" strokeWidth="1.8" fill="none" />
+            <rect x="12" y="12" width="9" height="9" rx="2" stroke="#6ee7b7" strokeWidth="1.8" fill="none" />
+          </svg>
+          <span style={{ ...s.brandName, color: text }}>syncboard</span>
+        </div>
+
+        <div style={s.topActions}>
+          {/* Theme */}
+          <button
+            onClick={p.onThemeToggle}
+            title={isDark ? 'Light mode' : 'Dark mode'}
+            style={{ ...s.iconBtn, color: text }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = hoverBg }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+          >
+            {isDark ? <Sun size={15} strokeWidth={1.75} /> : <Moon size={15} strokeWidth={1.75} />}
+          </button>
+
+          {/* Online status */}
+          <div style={{ ...s.statusPill, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', border: `1px solid ${dividerColor}` }}>
+            <span style={{ ...s.statusDot, background: p.connected ? '#40c057' : '#fa5252' }} />
+            <span style={{ color: textMuted, fontSize: 11 }}>{p.peerCount + 1} online</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom properties panel */}
+      <div style={{ ...s.propsBar, ...panel }}>
+
         {/* Stroke color */}
-        <div style={s.propGroup}>
-          <span style={s.propLabel}>Stroke</span>
-          <div style={s.swatches}>
-            {COLORS.map(c => (
+        <div style={s.propSection}>
+          <span style={{ ...s.propLabel, color: textMuted }}>Stroke</span>
+          <div style={s.swatchRow}>
+            {PALETTE.map(c => (
               <button
                 key={c}
                 onClick={() => p.onColor(c)}
                 style={{
                   ...s.swatch,
                   background: c,
-                  boxShadow: p.color === c ? `0 0 0 2px #fff, 0 0 0 4px ${c}` : 'none',
+                  border: p.color === c
+                    ? '2px solid #6c8ebf'
+                    : `1.5px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
+                  transform: p.color === c ? 'scale(1.15)' : 'scale(1)',
                 }}
               />
             ))}
@@ -97,162 +190,245 @@ export default function Toolbar(p: Props) {
               type="color"
               value={p.color}
               onChange={e => p.onColor(e.target.value)}
-              style={s.colorInput}
-              title="Custom color"
+              title="Custom"
+              style={{ ...s.colorPicker, border: `1.5px solid ${dividerColor}` }}
             />
           </div>
         </div>
 
-        <div style={s.divider} />
+        <div style={{ ...s.vDivider, background: dividerColor }} />
 
-        {/* Fill style */}
-        <div style={s.propGroup}>
-          <span style={s.propLabel}>Fill</span>
-          <div style={s.swatches}>
-            {(['none', 'hachure', 'solid'] as FillStyle[]).map(f => (
+        {/* Fill */}
+        <div style={s.propSection}>
+          <span style={{ ...s.propLabel, color: textMuted }}>Fill</span>
+          <div style={s.swatchRow}>
+            {FILL_OPTS.map(({ id, Icon, label }) => (
               <button
-                key={f}
-                onClick={() => p.onFillStyle(f)}
-                style={{ ...s.fillBtn, ...(p.fillStyle === f ? s.fillActive : {}) }}
+                key={id}
+                title={label}
+                onClick={() => p.onFillStyle(id)}
+                style={{
+                  ...s.optBtn,
+                  color: p.fillStyle === id ? '#6c8ebf' : text,
+                  background: p.fillStyle === id ? activeBg : 'transparent',
+                  border: p.fillStyle === id ? `1px solid ${activeBorder}` : `1px solid ${dividerColor}`,
+                }}
               >
-                {f === 'none' ? '—' : f === 'hachure' ? '≡' : '■'}
+                <Icon size={13} strokeWidth={1.75} />
               </button>
             ))}
           </div>
         </div>
 
-        <div style={s.divider} />
+        <div style={{ ...s.vDivider, background: dividerColor }} />
 
         {/* Stroke width */}
-        <div style={s.propGroup}>
-          <span style={s.propLabel}>Width</span>
-          <div style={s.swatches}>
-            {[1, 2, 4, 6].map(w => (
+        <div style={s.propSection}>
+          <span style={{ ...s.propLabel, color: textMuted }}>Width</span>
+          <div style={s.swatchRow}>
+            {WIDTHS.map(w => (
               <button
                 key={w}
                 onClick={() => p.onStrokeWidth(w)}
-                style={{ ...s.widthBtn, ...(p.strokeWidth === w ? s.fillActive : {}) }}
+                title={`${w}px`}
+                style={{
+                  ...s.optBtn,
+                  background: p.strokeWidth === w ? activeBg : 'transparent',
+                  border: p.strokeWidth === w ? `1px solid ${activeBorder}` : `1px solid ${dividerColor}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
               >
-                <div style={{ width: 18, height: w + 1, background: '#fff', borderRadius: 2 }} />
+                <div style={{ width: 16, height: Math.max(1, w * 0.75), borderRadius: 2, background: p.strokeWidth === w ? '#6c8ebf' : text }} />
               </button>
             ))}
           </div>
         </div>
 
-        <div style={s.divider} />
+        <div style={{ ...s.vDivider, background: dividerColor }} />
 
         {/* Roughness */}
-        <div style={s.propGroup}>
-          <span style={s.propLabel}>Rough</span>
-          <div style={s.swatches}>
-            {([0, 1, 2.5] as number[]).map((r, i) => (
+        <div style={s.propSection}>
+          <span style={{ ...s.propLabel, color: textMuted }}>Style</span>
+          <div style={s.swatchRow}>
+            {ROUGHNESS_LEVELS.map(({ value, label }) => (
               <button
-                key={r}
-                onClick={() => p.onRoughness(r)}
-                style={{ ...s.fillBtn, ...(p.roughness === r ? s.fillActive : {}) }}
+                key={value}
+                title={label}
+                onClick={() => p.onRoughness(value)}
+                style={{
+                  ...s.optBtn,
+                  fontSize: 11,
+                  color: p.roughness === value ? '#6c8ebf' : text,
+                  background: p.roughness === value ? activeBg : 'transparent',
+                  border: p.roughness === value ? `1px solid ${activeBorder}` : `1px solid ${dividerColor}`,
+                }}
               >
-                {['─', '~', '≈'][i]}
+                {label === 'Smooth' ? '─' : label === 'Normal' ? '∿' : '≈'}
               </button>
             ))}
           </div>
         </div>
 
-        <div style={s.divider} />
-
-        <button onClick={p.onClear} style={s.clearBtn}>Clear</button>
+        {p.tool === 'note' && (
+          <>
+            <div style={{ ...s.vDivider, background: dividerColor }} />
+            <div style={s.propSection}>
+              <span style={{ ...s.propLabel, color: textMuted }}>Note color</span>
+              <div style={s.swatchRow}>
+                {p.noteColors.map(c => (
+                  <button
+                    key={c}
+                    onClick={() => p.onNoteColor(c)}
+                    style={{
+                      ...s.swatch,
+                      background: c,
+                      border: p.noteColor === c
+                        ? '2px solid #6c8ebf'
+                        : `1.5px solid ${isDark ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.12)'}`,
+                      transform: p.noteColor === c ? 'scale(1.18)' : 'scale(1)',
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </>
   )
 }
 
 const s: Record<string, React.CSSProperties> = {
-  left: {
+  rail: {
     position: 'fixed',
     left: 12,
     top: '50%',
     transform: 'translateY(-50%)',
     display: 'flex',
     flexDirection: 'column',
+    alignItems: 'center',
     gap: 2,
-    background: 'rgba(22,22,30,0.96)',
-    border: '1px solid rgba(255,255,255,0.07)',
-    borderRadius: 12,
-    padding: 6,
-    backdropFilter: 'blur(20px)',
+    borderRadius: 14,
+    padding: '8px 6px',
     zIndex: 100,
-    boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+    width: 44,
   },
-  btn: {
-    width: 36,
-    height: 36,
+  logoMark: {
+    width: 32,
+    height: 32,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  tooltipWrap: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  tooltip: {
+    position: 'absolute',
+    left: 'calc(100% + 10px)',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    whiteSpace: 'nowrap',
+    fontSize: 12,
+    padding: '4px 8px',
+    borderRadius: 6,
+    pointerEvents: 'none',
+    opacity: 0,
+    transition: 'opacity 0.15s',
+    zIndex: 200,
+    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+  },
+  toolBtn: {
+    width: 34,
+    height: 34,
     border: 'none',
-    background: 'transparent',
     borderRadius: 8,
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    transition: 'background 0.1s',
+    transition: 'background 0.1s, color 0.1s',
+    padding: 0,
   },
-  active: {
-    background: 'rgba(108,142,191,0.3)',
-    outline: '1.5px solid rgba(108,142,191,0.6)',
-  },
-  icon: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.75)',
-    lineHeight: 1,
-  },
-  top: {
+  topBar: {
     position: 'fixed',
     top: 12,
     left: '50%',
     transform: 'translateX(-50%)',
     display: 'flex',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 16,
-    background: 'rgba(22,22,30,0.96)',
-    border: '1px solid rgba(255,255,255,0.07)',
-    borderRadius: 10,
-    padding: '6px 16px',
-    backdropFilter: 'blur(20px)',
+    borderRadius: 12,
+    padding: '7px 14px',
     zIndex: 100,
-    boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
+    minWidth: 320,
   },
   brand: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  brandName: {
     fontSize: 13,
     fontWeight: 700,
-    color: 'rgba(255,255,255,0.85)',
     letterSpacing: '-0.03em',
   },
-  topRight: { display: 'flex', alignItems: 'center', gap: 6 },
-  dot: { width: 6, height: 6, borderRadius: '50%' },
-  peers: { fontSize: 11, color: 'rgba(255,255,255,0.35)' },
+  topActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+  },
+  iconBtn: {
+    width: 30,
+    height: 30,
+    border: 'none',
+    background: 'transparent',
+    borderRadius: 7,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'background 0.1s',
+    padding: 0,
+  },
   recBtn: {
-    display: 'flex', alignItems: 'center', gap: 5,
-    background: 'rgba(250,82,82,0.1)',
-    border: '1px solid rgba(250,82,82,0.25)',
-    color: 'rgba(250,82,82,0.8)',
-    borderRadius: 7, padding: '3px 10px',
-    cursor: 'pointer', fontSize: 11, fontWeight: 600,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: 7,
+    padding: '4px 10px',
+    cursor: 'pointer',
+    fontSize: 12,
+    fontWeight: 500,
+    transition: 'all 0.15s',
+    letterSpacing: '-0.01em',
   },
-  recBtnActive: {
-    background: 'rgba(250,82,82,0.2)',
-    border: '1px solid rgba(250,82,82,0.5)',
-    color: '#fa5252',
+  recPulse: {
+    display: 'inline-block',
+    width: 6,
+    height: 6,
+    borderRadius: '50%',
+    background: '#e03131',
+    animation: 'pulse 1.2s infinite',
   },
-  recDot: {
-    width: 7, height: 7, borderRadius: '50%',
-    animation: 'none',
+  statusPill: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 7,
+    padding: '4px 10px',
   },
-  themeBtn: {
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    color: 'rgba(255,255,255,0.7)',
-    borderRadius: 7, padding: '3px 8px',
-    cursor: 'pointer', fontSize: 13,
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: '50%',
+    flexShrink: 0,
   },
-  props: {
+  propsBar: {
     position: 'fixed',
     bottom: 16,
     left: '50%',
@@ -260,75 +436,60 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     gap: 12,
-    background: 'rgba(22,22,30,0.96)',
-    border: '1px solid rgba(255,255,255,0.07)',
-    borderRadius: 12,
+    borderRadius: 14,
     padding: '8px 14px',
-    backdropFilter: 'blur(20px)',
     zIndex: 100,
-    boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
     userSelect: 'none',
   },
-  propGroup: { display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'flex-start' },
-  propLabel: { fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.1em' },
-  swatches: { display: 'flex', gap: 4, alignItems: 'center' },
+  propSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 5,
+    alignItems: 'flex-start',
+  },
+  propLabel: {
+    fontSize: 9,
+    textTransform: 'uppercase',
+    letterSpacing: '0.1em',
+    fontWeight: 600,
+  },
+  swatchRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+  },
   swatch: {
     width: 18,
     height: 18,
-    borderRadius: 4,
-    border: '1.5px solid rgba(255,255,255,0.15)',
+    borderRadius: 5,
     cursor: 'pointer',
     padding: 0,
-    transition: 'box-shadow 0.1s',
+    transition: 'transform 0.1s, border 0.1s',
+    flexShrink: 0,
   },
-  colorInput: {
+  colorPicker: {
     width: 22,
     height: 22,
-    borderRadius: 4,
-    border: '1.5px solid rgba(255,255,255,0.15)',
+    borderRadius: 5,
     cursor: 'pointer',
     padding: 1,
     background: 'transparent',
   },
-  fillBtn: {
+  optBtn: {
     width: 28,
-    height: 22,
-    border: '1px solid rgba(255,255,255,0.1)',
-    background: 'transparent',
-    color: 'rgba(255,255,255,0.6)',
-    borderRadius: 5,
-    cursor: 'pointer',
-    fontSize: 11,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fillActive: {
-    background: 'rgba(108,142,191,0.25)',
-    borderColor: 'rgba(108,142,191,0.5)',
-    color: '#fff',
-  },
-  widthBtn: {
-    width: 28,
-    height: 22,
-    border: '1px solid rgba(255,255,255,0.1)',
-    background: 'transparent',
-    borderRadius: 5,
+    height: 24,
+    borderRadius: 6,
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    transition: 'all 0.1s',
+    padding: 0,
+    flexShrink: 0,
   },
-  divider: { width: 1, height: 40, background: 'rgba(255,255,255,0.07)' },
-  clearBtn: {
-    background: 'rgba(250,82,82,0.12)',
-    border: '1px solid rgba(250,82,82,0.25)',
-    color: '#fa5252',
-    borderRadius: 7,
-    padding: '5px 12px',
-    fontSize: 11,
-    cursor: 'pointer',
-    fontWeight: 600,
-    letterSpacing: '0.03em',
+  vDivider: {
+    width: 1,
+    height: 36,
+    flexShrink: 0,
   },
 }

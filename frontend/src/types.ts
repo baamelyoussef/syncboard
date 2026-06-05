@@ -1,4 +1,4 @@
-export type Tool = 'select' | 'rect' | 'ellipse' | 'arrow' | 'pen' | 'text' | 'pan'
+export type Tool = 'select' | 'rect' | 'ellipse' | 'arrow' | 'pen' | 'text' | 'note' | 'pan'
 
 export type FillStyle = 'hachure' | 'solid' | 'none'
 
@@ -48,7 +48,17 @@ export interface TextShape extends BaseShape {
   fontSize: number
 }
 
-export type Shape = RectShape | EllipseShape | ArrowShape | PenShape | TextShape
+export interface NoteShape extends BaseShape {
+  kind: 'note'
+  x: number
+  y: number
+  width: number
+  height: number
+  text: string
+  noteColor: string
+}
+
+export type Shape = RectShape | EllipseShape | ArrowShape | PenShape | TextShape | NoteShape
 
 export type Op =
   | { type: 'ADD_SHAPE'; shape: Shape; clientId: string; clock: number }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useImperativeHandle, useRef, useState, forwardR
 import rough from 'roughjs'
 import { v4 as uuid } from 'uuid'
 import type {
-  Tool, Shape, RectShape, EllipseShape, ArrowShape, PenShape, TextShape,
+  Tool, Shape, RectShape, EllipseShape, ArrowShape, PenShape, TextShape, NoteShape,
   CursorState, Camera, FillStyle
 } from '../types'
 
@@ -135,6 +135,62 @@ function drawShape(
       ctx.strokeRect(tx.x - 4, tx.y - tx.fontSize - 2, w + 8, tx.fontSize + 8)
       ctx.setLineDash([])
     }
+  } else if (shape.kind === 'note') {
+    const n = shape as NoteShape
+    const r = 8
+    // Shadow
+    ctx.shadowColor = 'rgba(0,0,0,0.18)'
+    ctx.shadowBlur = 12
+    ctx.shadowOffsetY = 4
+    // Body
+    ctx.fillStyle = n.noteColor
+    ctx.beginPath()
+    ctx.roundRect(n.x, n.y, n.width, n.height, r)
+    ctx.fill()
+    ctx.shadowColor = 'transparent'
+    ctx.shadowBlur = 0
+    ctx.shadowOffsetY = 0
+    // Fold corner
+    const foldSize = 18
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'
+    ctx.beginPath()
+    ctx.moveTo(n.x + n.width - foldSize, n.y)
+    ctx.lineTo(n.x + n.width, n.y + foldSize)
+    ctx.lineTo(n.x + n.width - foldSize, n.y + foldSize)
+    ctx.closePath()
+    ctx.fill()
+    // Text
+    if (n.text) {
+      ctx.fillStyle = 'rgba(0,0,0,0.75)'
+      ctx.font = `15px "Caveat", cursive`
+      const padding = 12
+      const lineHeight = 20
+      const maxWidth = n.width - padding * 2
+      const words = n.text.split(' ')
+      let line = ''
+      let y = n.y + padding + 14
+      for (const word of words) {
+        const test = line ? `${line} ${word}` : word
+        if (ctx.measureText(test).width > maxWidth && line) {
+          ctx.fillText(line, n.x + padding, y)
+          line = word
+          y += lineHeight
+          if (y > n.y + n.height - padding) break
+        } else {
+          line = test
+        }
+      }
+      if (line) ctx.fillText(line, n.x + padding, y)
+    }
+    if (selected) {
+      ctx.strokeStyle = '#6c8ebf'
+      ctx.lineWidth = 2
+      ctx.setLineDash([4, 4])
+      ctx.beginPath()
+      ctx.roundRect(n.x - 4, n.y - 4, n.width + 8, n.height + 8, r + 2)
+      ctx.stroke()
+      ctx.setLineDash([])
+    }
   }
 
   ctx.globalAlpha = 1
@@ -171,6 +227,10 @@ function hitTest(shape: Shape, wx: number, wy: number): boolean {
   if (shape.kind === 'text') {
     const tx = shape as TextShape
     return wx >= tx.x - pad && wy >= tx.y - tx.fontSize - pad && wy <= tx.y + pad
+  }
+  if (shape.kind === 'note') {
+    const n = shape as NoteShape
+    return wx >= n.x - pad && wx <= n.x + n.width + pad && wy >= n.y - pad && wy <= n.y + n.height + pad
   }
   return false
 }
@@ -324,7 +384,7 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({
     } else if (tool === 'pen') {
       penPoints.current = [world.x, world.y]
       setDraft({ ...base, kind: 'pen', fill: 'transparent', fillStyle: 'none', roughness: 0.5, points: penPoints.current } as PenShape)
-    } else if (tool === 'text') {
+    } else if (tool === 'text' || tool === 'note') {
       onTextClick(e.clientX, e.clientY, world.x, world.y)
       drawing.current = false
     }
